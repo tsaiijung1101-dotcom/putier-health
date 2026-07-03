@@ -58,6 +58,13 @@ function getCategoryName(symptomId: string): string {
 }
 
 // ── Accordion ─────────────────────────────────────────────
+// Helper: Detect severe conditions
+function detectSevereConditions(medications: string, surgicalHistory: string): boolean {
+  const severeKeywords = ["愛滋症", "癌症", "洗腎", "紅斑狼瘡", "糖尿病嚴重", "紅斑狼瘡病"];
+  const fullText = (medications + surgicalHistory).toLowerCase();
+  return severeKeywords.some(keyword => fullText.includes(keyword.toLowerCase()));
+}
+
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
@@ -91,9 +98,32 @@ export default function Step3Report() {
   const [setCount, setSetCount] = useState(1);
   const [saved, setSaved] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const hasSevereCondition = detectSevereConditions(basicInfo.medications || "", basicInfo.surgeryHistory || "");
 
-  // Calculate dosage
+  // Calculate dosage FIRST
   const dosage = calculateDosage(age, gender, selectedSymptoms, weight, setCount);
+
+  // Calculate days based on severe condition status
+  const calculateDays = (sets: number) => {
+    const totalCaps = sets * 420;
+    if (hasSevereCondition) {
+      // For severe conditions, use fixed range lookup table
+      const rangeMap: Record<number, { min: number; max: number }> = {
+        1: { min: 75, max: 95 },
+        2: { min: 150, max: 180 },
+        3: { min: 225, max: 260 },
+        5: { min: 380, max: 430 },
+      };
+      const range = rangeMap[sets] || { min: 75, max: 95 }; // Default to 1-set range
+      return { min: range.min, max: range.max, isRange: true };
+    } else {
+      // For normal conditions, return fixed value
+      const days = Math.round(totalCaps / dosage.dailyCapsules);
+      return { min: days, max: days, isRange: false };
+    }
+  };
+
+  const daysData = calculateDays(setCount);
   const bmiData = weight && height ? calculateBMI(weight, height) : null;
   const waterData = weight ? calculateDailyWater(weight) : null;
 
@@ -159,7 +189,7 @@ export default function Step3Report() {
       bmi: bmiData?.bmi ?? undefined,
       dailyWater: waterData?.ml ?? undefined,
     });
-  }, [saved]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [saved, dosage, basicInfo, selectedSymptoms, height, weight, bmiData, waterData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     saveReport();
@@ -262,6 +292,25 @@ ${secretaryMsg}
         )}
       </div>
 
+      {/* 2. Severe Condition Warning */}
+      {hasSevereCondition && (
+        <div className="putier-card bg-red-50 border-2 border-red-300">
+          <div className="flex items-start gap-2 mb-2">
+            <span className="text-2xl flex-shrink-0">🚨</span>
+            <h3 className="text-sm font-bold text-red-800">專業健康指引（特殊調養對象專屬）</h3>
+          </div>
+          <p className="text-xs text-red-800 leading-relaxed whitespace-pre-wrap">
+            偵測到您目前有較為特殊的身體調養需求（如癌症、洗腎或嚴重血糖波動）。本產品能為您提供此期間極高密度的原料支持，但因重症對象的新陳代謝與生理平衡較為敏感，【強烈建議您採取「分階段、溫和漸進式」的方法，根據自身每天的實際狀態來評估增量】：
+
+- 【第 1 - 3 天（身體開機期）】：每日僅服用 1 顆，讓身體溫和適應。
+- 【第 4 - 7 天（基礎修復期）】：若無劇烈好轉反應，可調整為每日 2 顆（早晚各 1）。
+- 【第二週起（元氣加壓期）】：若身體狀態良好、適應順暢，可再根據自身實際體感與顧問指導，安心且逐步增量至每日 4-6 顆。
+
+💡 請務必將本食品與您的西藥、化放療或標靶藥物前後【嚴格隔開 2 小時以上】服用，並確保每日充足飲水（洗腎患者請遵照醫囑限水量分次小口飲用）。
+          </p>
+        </div>
+      )}
+
       {/* 2. Dosage Recommendation */}
       <div className="putier-card">
         <div className="flex items-center gap-2 mb-3">
@@ -281,38 +330,33 @@ ${secretaryMsg}
           <div className="text-white/70 text-sm">顆 / 天</div>
         </div>
 
-        {/* Set count adjuster */}
+        {/* Set count dropdown selector */}
         <div className="bg-gray-50 rounded-xl p-3 mb-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-gray-700">套數調整</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSetCount(s => Math.max(1, s - 1))}
-                className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              >
-                <Minus size={14} />
-              </button>
-              <span className="text-lg font-bold text-[#1B4965] w-8 text-center">{setCount}</span>
-              <button
-                onClick={() => setSetCount(s => Math.min(12, s + 1))}
-                className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <label className="text-sm font-bold text-gray-700 block mb-2">選擇產品套數</label>
+          <select
+            value={setCount}
+            onChange={(e) => setSetCount(parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:border-[#1B4965] focus:ring-1 focus:ring-[#1B4965]"
+          >
+            <option value={1}>1 套 (420 顆)</option>
+            <option value={2}>2 套 (840 顆)</option>
+            <option value={3}>3 套 (1,260 顆)</option>
+            <option value={5}>5 套 (2,100 顆)</option>
+          </select>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
             <RefreshCw size={12} />
-            <span>1 套 = 420 顆，調整套數後自動重新計算</span>
+            <span>套數改變時，天數會自動更新</span>
           </div>
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <div className="text-xs text-blue-600 font-medium">首套天數</div>
-            <div className="text-2xl font-bold text-[#1B4965] mt-1">{dosage.firstSetDays}</div>
-            <div className="text-xs text-blue-600">天</div>
+            <div className="text-xs text-blue-600 font-medium">可服用天數</div>
+            <div className="text-2xl font-bold text-[#1B4965] mt-1">
+              {daysData.isRange ? `${daysData.min} - ${daysData.max}` : daysData.min}
+            </div>
+            <div className="text-xs text-blue-600">{daysData.isRange ? "天（預估範圍）" : "天"}</div>
           </div>
           <div className="bg-green-50 rounded-xl p-3 text-center">
             <div className="text-xs text-green-600 font-medium">總顆數</div>
@@ -492,14 +536,23 @@ ${secretaryMsg}
       {/* 5. Cell Repair Advantages Accordion */}
       <div>
         <Accordion title={`🔬 ${CELL_REPAIR_ADVANTAGES.title}`}>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              {CELL_REPAIR_ADVANTAGES.technologies.map((tech, i) => (
-                <div key={i} className="bg-gray-50 rounded-xl p-3">
-                  <div className="text-xs font-bold text-gray-700 mb-1">{tech.name}</div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{tech.description}</p>
+          <div className="space-y-4">
+            {CELL_REPAIR_ADVANTAGES.advantages.map((adv, i) => (
+              <div key={i} className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4 border border-blue-100">
+                <div className="flex items-start gap-3 mb-2">
+                  <span className="text-2xl flex-shrink-0">{adv.emoji}</span>
+                  <h4 className="text-sm font-bold text-[#1B4965]">{adv.title}</h4>
                 </div>
-              ))}
+                <p className="text-xs text-gray-700 leading-relaxed ml-9">{adv.description}</p>
+              </div>
+            ))}
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="text-xs text-gray-600 font-semibold mb-2">📚 文獻出處：</p>
+              <ul className="space-y-1">
+                {CELL_REPAIR_ADVANTAGES.references.map((ref, i) => (
+                  <li key={i} className="text-xs text-gray-600 leading-relaxed">• {ref}</li>
+                ))}
+              </ul>
             </div>
           </div>
         </Accordion>

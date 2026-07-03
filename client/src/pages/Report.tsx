@@ -396,20 +396,25 @@ ${secretaryMsg}
           </div>
         </Accordion>
 
-        <Accordion title={`🔬 ${CELL_REPAIR_ADVANTAGES.title}`}>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              {CELL_REPAIR_ADVANTAGES.technologies.map((tech, i) => (
-                <div key={i} className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ background: "#22C55E" }}>{i + 1}</span>
-                    <span className="text-xs font-bold text-[#1B4965]">{tech.name}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed pl-7">{tech.description}</p>
+                <Accordion title={`🔬 ${CELL_REPAIR_ADVANTAGES.title}`}>
+          <div className="space-y-4">
+            {CELL_REPAIR_ADVANTAGES.advantages.map((adv, i) => (
+              <div key={i} className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4 border border-blue-100">
+                <div className="flex items-start gap-3 mb-2">
+                  <span className="text-2xl flex-shrink-0">{adv.emoji}</span>
+                  <h4 className="text-sm font-bold text-[#1B4965]">{adv.title}</h4>
                 </div>
-              ))}
+                <p className="text-xs text-gray-700 leading-relaxed ml-9">{adv.description}</p>
+              </div>
+            ))}
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="text-xs text-gray-600 font-semibold mb-2">📚 文獻出處：</p>
+              <ul className="space-y-1">
+                {CELL_REPAIR_ADVANTAGES.references.map((ref, i) => (
+                  <li key={i} className="text-xs text-gray-600 leading-relaxed">• {ref}</li>
+                ))}
+              </ul>
             </div>
-            <div className="whitespace-pre-line text-xs text-gray-600 leading-relaxed mt-3">{CELL_REPAIR_ADVANTAGES.content}</div>
           </div>
         </Accordion>
 
