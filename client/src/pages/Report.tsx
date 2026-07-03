@@ -144,39 +144,22 @@ export default function Report() {
 
   const handleLineShare = () => {
     const symptomList = selectedSymptoms.map(id => `• ${getSymptomLabel(id)}`).join("\n");
-    // Build per-symptom herx summary
-    const herxSummary = selectedSymptoms
-      .map(id => {
-        const reaction = HERX_REACTIONS.find(r => r.symptomId === id);
-        if (!reaction) return null;
-        const firstReaction = reaction.possibleReactions[0] || "";
-        return `• ${getSymptomLabel(id)}：${firstReaction}`;
-      })
-      .filter(Boolean)
-      .join("\n");
 
-    const text = `🌿 Putier 好轉反應評估報告
+    // Build a concise message that fits within LINE's URL length limit (~2000 chars)
+    let text = `🌿 Putier 好轉反應評估報告\n\n👤 ${data.nickname}（${age}歲 ${gender === "male" ? "男性" : "女性"}）\n\n📋 保健需求（${selectedSymptoms.length}項）：\n${symptomList}\n\n💊 每日建議：${dosage.dailyCapsules} 顆\n📅 首套天數：${dosage.firstSetDays} 天\n⏱ 改善週期：${dosage.improvementCycles}`;
 
-👤 ${data.nickname}（${age}歲 ${gender === "male" ? "男性" : "女性"}）
+    if (bmiData) text += `\n📊 BMI：${bmiData.bmi}（${bmiData.category}）`;
+    if (waterData) text += `\n💧 每日喝水：${waterData.liters} 公升`;
 
-📋 保健需求：
-${symptomList}
+    text += `\n\n#Putier #好轉反應 #細胞修復`;
 
-✨ 好轉反應預估（節錄）：
-${herxSummary || "（依個人體質而異）"}
+    // Ensure URL stays within safe length limit (LINE returns 400 if URL > ~2000 chars)
+    const MAX_TEXT_LENGTH = 300;
+    if (text.length > MAX_TEXT_LENGTH) {
+      text = text.substring(0, MAX_TEXT_LENGTH - 3) + "...";
+    }
 
-💊 服用建議：每日 ${dosage.dailyCapsules} 顆
-📅 首套天數：${dosage.firstSetDays} 天
-⏱ 改善週期：${dosage.improvementCycles}
-${bmiData ? `\n📊 BMI：${bmiData.bmi}（${bmiData.category}）` : ""}
-${waterData ? `💧 每日建議喝水：${waterData.liters} 公升` : ""}
-
-💚 小秘書提醒：
-${secretaryMsg}
-
-#Putier #好轉反應 #細胞修復`;
-
-    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    const lineUrl = `https://line.me/R/share?text=${encodeURIComponent(text)}`;
     window.open(lineUrl, "_blank");
   };
 
