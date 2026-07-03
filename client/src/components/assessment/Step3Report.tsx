@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ import {
   Activity,
   BookOpen,
   Sparkles,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -87,7 +89,8 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
 
 // ── Main Component ─────────────────────────────────────────
 export default function Step3Report() {
-  const { state, setSavedAssessmentId } = useAssessment();
+  const [, navigate] = useLocation();
+  const { state, setSavedAssessmentId, resetAssessment } = useAssessment();
   const { basicInfo, selectedSymptoms } = state;
 
   const age = calcAge(basicInfo.birthdate);
@@ -549,6 +552,21 @@ export default function Step3Report() {
         >
           <Share2 size={14} className="mr-1" />
           LINE 分享
+        </Button>
+      </div>
+
+      {/* 返回首頁按鈕 */}
+      <div className="pt-2 pb-4">
+        <Button
+          onClick={() => {
+            resetAssessment();
+            navigate("/");
+          }}
+          variant="outline"
+          className="w-full h-12 text-sm font-bold rounded-xl border-2 border-[#1B4965] text-[#1B4965] hover:bg-[#1B4965]/5"
+        >
+          <Home size={16} className="mr-2" />
+          返回首頁
         </Button>
       </div>
     </div>

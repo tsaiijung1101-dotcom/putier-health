@@ -35,6 +35,10 @@ export default function Step1BasicInfo() {
       toast.error("請選擇生日");
       return;
     }
+    if (basicInfo.birthdate > today) {
+      toast.error("生日不可選擇未來日期");
+      return;
+    }
     if (!basicInfo.gender) {
       toast.error("請選擇性別");
       return;
@@ -118,7 +122,14 @@ export default function Step1BasicInfo() {
           type="date"
           max={today}
           value={basicInfo.birthdate}
-          onChange={e => updateBasicInfo({ birthdate: e.target.value })}
+          onChange={e => {
+            const val = e.target.value;
+            if (val > today) {
+              toast.error("生日不可選擇未來日期");
+              return;
+            }
+            updateBasicInfo({ birthdate: val });
+          }}
           className="rounded-xl"
         />
       </div>
@@ -215,14 +226,13 @@ export default function Step1BasicInfo() {
             className="flex items-center gap-2 text-sm text-[#1B4965] font-medium border border-dashed border-[#1B4965]/40 rounded-xl px-4 py-2.5 w-full justify-center hover:bg-[#1B4965]/5 transition-colors disabled:opacity-50"
           >
             <Camera size={16} />
-            {uploading ? "上傳中..." : "拍照上傳藥物圖片（可多張）"}
+            {uploading ? "上傳中..." : "拍照或選擇藥物圖片（可多張）"}
           </button>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
             multiple
-            capture="environment"
             className="hidden"
             onChange={e => handleImageUpload(e.target.files)}
           />
