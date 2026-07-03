@@ -90,6 +90,7 @@ export default function Step3Report() {
 
   const [setCount, setSetCount] = useState(1);
   const [saved, setSaved] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // Calculate dosage
   const dosage = calculateDosage(age, gender, selectedSymptoms, weight, setCount);
@@ -120,6 +121,11 @@ export default function Step3Report() {
     acc[cat].push(item);
     return acc;
   }, {});
+
+  // Extract all unique reactions for summary
+  const allReactions = Array.from(
+    new Set(herxData.flatMap(item => item.reaction.possibleReactions))
+  );
 
   // Save to DB
   const createAssessment = trpc.assessment.create.useMutation({
@@ -196,6 +202,13 @@ ${secretaryMsg}
 
     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
     window.open(lineUrl, "_blank");
+  };
+
+  const toggleCategory = (catName: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [catName]: !prev[catName]
+    }));
   };
 
   return (
@@ -290,7 +303,7 @@ ${secretaryMsg}
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <RefreshCw size={12} />
-            <span>1 套 = 60 顆，調整套數後自動重新計算</span>
+            <span>1 套 = 420 顆，調整套數後自動重新計算</span>
           </div>
         </div>
 
@@ -303,7 +316,7 @@ ${secretaryMsg}
           </div>
           <div className="bg-green-50 rounded-xl p-3 text-center">
             <div className="text-xs text-green-600 font-medium">總顆數</div>
-            <div className="text-2xl font-bold text-green-700 mt-1">{setCount * 60}</div>
+            <div className="text-2xl font-bold text-green-700 mt-1">{setCount * 420}</div>
             <div className="text-xs text-green-600">顆</div>
           </div>
         </div>
@@ -335,11 +348,16 @@ ${secretaryMsg}
           <div className="text-xs font-bold text-gray-700 mb-1">💧 喝水指南</div>
           <p className="text-xs text-gray-600 leading-relaxed">{dosage.waterGuide}</p>
         </div>
+
+        {/* Regulatory Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-3">
+          <p className="text-xs text-blue-800 leading-relaxed whitespace-pre-wrap">{dosage.regulatoryNotice}</p>
+        </div>
       </div>
 
-      {/* 3. Herx Reactions */}
+      {/* 3. Herx Reactions - Restructured */}
       {herxData.length > 0 && (
-        <div className="space-y-3">
+        <div className="putier-card space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#7C3AED" }}>
               <Sparkles size={14} className="text-white" />
@@ -347,59 +365,94 @@ ${secretaryMsg}
             <h2 className="text-base font-bold text-[#1B4965]">症狀對應之好轉反應預估</h2>
           </div>
 
-          {Object.entries(herxByCategory).map(([catName, items]) => (
-            <div key={catName}>
-              <div className="text-xs font-bold text-purple-600 mb-2 px-1">
-                {SYMPTOM_CATEGORIES.find(c => c.name === catName)?.emoji} {catName}
-              </div>
-              {items.map(({ symptomId, reaction, label }) => (
-                <div key={symptomId} className="herx-card mb-3">
-                  <div className="herx-card-header">
-                    <h3 className="text-sm font-bold">{label}</h3>
-                  </div>
-                  <div className="p-4 space-y-3">
-                    {/* Possible reactions */}
-                    <div>
-                      <div className="text-xs font-bold text-purple-700 mb-1.5">可能好轉反應：</div>
-                      <ul className="space-y-1">
-                        {reaction.possibleReactions.map((r, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
-                            <span className="text-purple-400 mt-0.5">•</span>
-                            {r}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Ingredients */}
-                    <div>
-                      <div className="text-xs font-bold text-purple-700 mb-1.5">原因成分有：</div>
-                      <div className="flex flex-wrap gap-1">
-                        {reaction.ingredients.map(ingId => {
-                          const ing = getIngredient(ingId);
-                          return ing ? (
-                            <span
-                              key={ingId}
-                              className="ingredient-tag"
-                              style={{ background: ing.color }}
-                            >
-                              {ing.name}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Improvement */}
-                    <div>
-                      <div className="text-xs font-bold text-purple-700 mb-1.5">身體改善：</div>
-                      <p className="text-xs text-gray-600 leading-relaxed">{reaction.improvement}</p>
-                    </div>
-                  </div>
-                </div>
+          {/* Layer 1: Overall Summary */}
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+            <div className="text-xs font-bold text-purple-800 mb-3">✨ 本次可能出現的好轉反應症狀彙整：</div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {allReactions.map((reaction, i) => (
+                <span key={i} className="inline-block bg-purple-200 text-purple-800 text-xs font-medium px-3 py-1.5 rounded-full">
+                  {reaction}
+                </span>
               ))}
             </div>
-          ))}
+            <p className="text-xs text-purple-700 leading-relaxed">
+              💡 <strong>提示：</strong>以上症狀為可能的好轉反應，不一定全部出現，且因人而異。請點擊下方各項保健需求，查看詳細的成分修復機制與改善原理。
+            </p>
+          </div>
+
+          {/* Layer 2: Detailed Accordion */}
+          <div className="space-y-2">
+            {Object.entries(herxByCategory).map(([catName, items]) => {
+              const isOpen = expandedCategories[catName] || false;
+              const catEmoji = SYMPTOM_CATEGORIES.find(c => c.name === catName)?.emoji;
+              return (
+                <div key={catName} className="border border-purple-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleCategory(catName)}
+                    className="w-full px-4 py-3 flex items-center justify-between bg-purple-50 hover:bg-purple-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-lg">{catEmoji}</span>
+                      <span className="text-sm font-bold text-purple-800">{catName}</span>
+                      <span className="text-xs text-purple-600 ml-1">({items.length} 項)</span>
+                    </div>
+                    {isOpen ? (
+                      <ChevronUp size={16} className="text-purple-600" />
+                    ) : (
+                      <ChevronDown size={16} className="text-purple-600" />
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div className="p-4 space-y-4 bg-white">
+                      {items.map(({ symptomId, reaction, label }) => (
+                        <div key={symptomId} className="border-l-4 border-purple-300 pl-4">
+                          <h4 className="text-sm font-bold text-purple-800 mb-3">{label}</h4>
+
+                          {/* Possible reactions */}
+                          <div className="mb-3">
+                            <div className="text-xs font-bold text-purple-700 mb-1.5">可能好轉反應：</div>
+                            <ul className="space-y-1">
+                              {reaction.possibleReactions.map((r, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
+                                  <span className="text-purple-400 mt-0.5">•</span>
+                                  {r}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Ingredients */}
+                          <div className="mb-3">
+                            <div className="text-xs font-bold text-purple-700 mb-1.5">原因成分有：</div>
+                            <div className="flex flex-wrap gap-1">
+                              {reaction.ingredients.map(ingId => {
+                                const ing = getIngredient(ingId);
+                                return ing ? (
+                                  <span
+                                    key={ingId}
+                                    className="ingredient-tag"
+                                    style={{ background: ing.color }}
+                                  >
+                                    {ing.name}
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Improvement */}
+                          <div>
+                            <div className="text-xs font-bold text-purple-700 mb-1.5">身體改善：</div>
+                            <p className="text-xs text-gray-600 leading-relaxed">{reaction.improvement}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
           {/* Secretary */}
           <div className="secretary-box">
@@ -443,42 +496,25 @@ ${secretaryMsg}
             <div className="space-y-2">
               {CELL_REPAIR_ADVANTAGES.technologies.map((tech, i) => (
                 <div key={i} className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                      style={{ background: "#22C55E" }}
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="text-xs font-bold text-[#1B4965]">{tech.name}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed pl-7">{tech.description}</p>
+                  <div className="text-xs font-bold text-gray-700 mb-1">{tech.name}</div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{tech.description}</p>
                 </div>
               ))}
-            </div>
-            <div className="whitespace-pre-line text-xs text-gray-600 leading-relaxed mt-3">
-              {CELL_REPAIR_ADVANTAGES.content}
             </div>
           </div>
         </Accordion>
       </div>
 
-      {/* LINE Share Button */}
-      <Button
-        onClick={handleLineShare}
-        className="w-full h-13 text-base font-bold rounded-xl shadow-lg"
-        style={{ background: "#06C755", color: "white" }}
-      >
-        <Share2 size={18} className="mr-2" />
-        LINE 分享報告
-      </Button>
-
-      {saved && (
-        <p className="text-center text-xs text-gray-400">
-          ✅ 報告已自動儲存
-          {basicInfo.lineId && ` · LINE ID: ${basicInfo.lineId}`}
-        </p>
-      )}
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-4">
+        <Button
+          onClick={handleLineShare}
+          className="flex-1 bg-[#22C55E] hover:bg-green-600 text-white"
+        >
+          <Share2 size={14} className="mr-1" />
+          LINE 分享
+        </Button>
+      </div>
     </div>
   );
 }

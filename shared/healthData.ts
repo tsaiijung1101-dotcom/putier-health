@@ -543,10 +543,11 @@ export const CELL_REPAIR_ADVANTAGES = {
 // ── 服用建議計算邏輯 ──────────────────────────────────────
 export interface DosageRecommendation {
   dailyCapsules: number; // 每日建議顆數
-  firstSetDays: number; // 首套天數（1套=60顆）
+  firstSetDays: number; // 首套天數（1套=420顆）
   improvementCycles: string; // 預計改善週期描述
   waterGuide: string; // 喝水指南
   dosageGuide: string; // 服用指南
+  regulatoryNotice: string; // 台灣法規澄清說明
 }
 
 export function calculateDosage(
@@ -573,8 +574,8 @@ export function calculateDosage(
   // 確保在 2-6 範圍內
   const dailyCapsules = Math.max(2, Math.min(6, baseCapsules));
 
-  // 首套天數（1套=60顆）
-  const totalCapsules = setCount * 60;
+  // 首套天數（1套=420顆）
+  const totalCapsules = setCount * 420;
   const firstSetDays = Math.round(totalCapsules / dailyCapsules);
 
   // 預計改善週期
@@ -603,12 +604,16 @@ export function calculateDosage(
         ? `建議每日服用 ${dailyCapsules} 顆，早餐後服用 ${Math.ceil(dailyCapsules / 2)} 顆，晚餐後服用 ${Math.floor(dailyCapsules / 2)} 顆，搭配溫水服用效果最佳。`
         : `建議每日服用 ${dailyCapsules} 顆，早餐後服用 2 顆，午餐後服用 2 顆，晚餐後服用 ${dailyCapsules - 4} 顆，搭配溫水服用效果最佳。`;
 
+  // 台灣法規澄清說明
+  const regulatoryNotice = `💡 溫馨提示：本產品包裝上註明之每日 2 粒建議量，主要是為因應中華民國台灣政府之食品法規規範。本產品定位為頂級高純度營養食品，不分年齡層皆可全年齡安心食用。若您希望在初期加速細胞修復、追求更好的日常保健效果，在維持基礎食用量的同時，完全可以根據每天自己身體的實際感受，安心且開放地自主調整劑量（例如初期可由 2 顆調配調整為每日 4-6 顆或更多）。請隨時觀察身體的瞑眩好轉反應，這有助於更快啟動健康循環。`;
+
   return {
     dailyCapsules,
     firstSetDays,
     improvementCycles,
     waterGuide,
     dosageGuide,
+    regulatoryNotice,
   };
 }
 

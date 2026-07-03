@@ -74,12 +74,12 @@ describe("calculateDosage", () => {
 
   it("calculates firstSetDays correctly for 1 set", () => {
     const result = calculateDosage(30, "female", ["s1", "s2"], undefined, 1);
-    expect(result.firstSetDays).toBe(Math.round(60 / result.dailyCapsules));
+    expect(result.firstSetDays).toBe(Math.round(420 / result.dailyCapsules));
   });
 
   it("calculates firstSetDays correctly for 2 sets", () => {
     const result = calculateDosage(30, "female", ["s1", "s2"], undefined, 2);
-    expect(result.firstSetDays).toBe(Math.round(120 / result.dailyCapsules));
+    expect(result.firstSetDays).toBe(Math.round(840 / result.dailyCapsules));
   });
 });
 
