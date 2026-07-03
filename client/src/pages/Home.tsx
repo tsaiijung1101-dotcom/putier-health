@@ -1,31 +1,176 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { getLoginUrl } from "@/const";
-import { Streamdown } from 'streamdown';
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ClipboardList, History, Leaf, Shield, Zap, Star } from "lucide-react";
+import { useAssessment } from "@/contexts/AssessmentContext";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
 export default function Home() {
-  // The userAuth hooks provides authentication state
-  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+  const [, navigate] = useLocation();
+  const { resetAssessment } = useAssessment();
+  const [showRecordsDialog, setShowRecordsDialog] = useState(false);
+  const [lineIdInput, setLineIdInput] = useState("");
 
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  const handleStartAssessment = () => {
+    resetAssessment();
+    navigate("/assessment");
+  };
+
+  const handleViewRecords = () => {
+    if (lineIdInput.trim()) {
+      navigate(`/records?line_id=${encodeURIComponent(lineIdInput.trim())}`);
+      setShowRecordsDialog(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
+    <div className="min-h-screen" style={{ background: "var(--putier-bg)" }}>
+      {/* Hero Section */}
+      <div
+        className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1B4965 0%, #2d6a8f 100%)" }}
+      >
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white transform translate-x-20 -translate-y-20" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white transform -translate-x-16 translate-y-16" />
+        </div>
+        <div className="relative container py-10 text-white">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <Leaf size={22} className="text-[#22C55E]" />
+            </div>
+            <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
+          </div>
+          <h1 className="text-2xl font-bold mb-2 leading-tight">
+            好轉反應<br />自主查詢系統
+          </h1>
+          <p className="text-sm opacity-80 mb-6 leading-relaxed">
+            根據您的個人健康狀況，<br />
+            生成專屬的細胞修復評估報告
+          </p>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleStartAssessment}
+              className="flex-1 h-12 text-base font-bold rounded-xl shadow-lg"
+              style={{ background: "#22C55E", color: "white" }}
+            >
+              <ClipboardList size={18} className="mr-2" />
+              開始評估
+            </Button>
+            <Button
+              onClick={() => setShowRecordsDialog(true)}
+              variant="outline"
+              className="flex-1 h-12 text-base font-bold rounded-xl border-white/40 text-white bg-white/10 hover:bg-white/20"
+            >
+              <History size={18} className="mr-2" />
+              查看紀錄
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="container py-6">
+        <h2 className="text-base font-bold text-[#1B4965] mb-4">評估包含內容</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { icon: <ClipboardList size={20} />, title: "個性化報告", desc: "根據症狀生成專屬建議" },
+            { icon: <Shield size={20} />, title: "好轉反應預估", desc: "了解修復過程中的反應" },
+            { icon: <Zap size={20} />, title: "服用建議", desc: "精準計算每日服用量" },
+            { icon: <Star size={20} />, title: "改善週期", desc: "預估身體修復時程" },
+          ].map((item, i) => (
+            <div key={i} className="putier-card flex flex-col gap-2">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "#1B4965", color: "white" }}
+              >
+                {item.icon}
+              </div>
+              <div>
+                <div className="text-sm font-bold text-gray-800">{item.title}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 14 Ingredients */}
+      <div className="container pb-6">
+        <div className="putier-card">
+          <h2 className="text-sm font-bold text-[#1B4965] mb-3">14 種珍貴成分</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              "鹿胎盤活細胞", "核心鑰鍵", "鹿茸臘萃", "普亞參皂", "鹿角靈芝",
+              "褐藻糖膠", "蘋果多酚", "海洋膠原蛋白", "月見草油", "酪梨油",
+              "深海鮫精", "蘆薈", "琉璃苣油", "蕃茄紅素",
+            ].map((name, i) => (
+              <span
+                key={i}
+                className="text-xs px-2 py-1 rounded-full font-medium"
+                style={{ background: "#EDE9FE", color: "#7C3AED" }}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 6 Technologies */}
+      <div className="container pb-8">
+        <div className="putier-card">
+          <h2 className="text-sm font-bold text-[#1B4965] mb-3">六大高科技技術</h2>
+          <div className="space-y-2">
+            {[
+              "凍乾保存技術 — 零下 60 度保存生物活性",
+              "乳化分解技術 — 100% 完整吸收",
+              "氮氣活膠囊技術 — 防止成分氧化",
+              "腸溶包衣技術 — 吸收率提升 3 倍",
+              "生物活性膠囊技術 — 膠原蛋白膠囊外殼",
+              "超臨界流體萃取 — 保留 99% 活細胞",
+            ].map((tech, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                <span
+                  className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold mt-0.5"
+                  style={{ background: "#22C55E" }}
+                >
+                  {i + 1}
+                </span>
+                {tech}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Records Dialog */}
+      <Dialog open={showRecordsDialog} onOpenChange={setShowRecordsDialog}>
+        <DialogContent className="mx-4 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B4965]">查看客戶紀錄</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-600">請輸入客戶的 LINE ID 以查詢歷史評估紀錄</p>
+            <Input
+              placeholder="請輸入 LINE ID"
+              value={lineIdInput}
+              onChange={e => setLineIdInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleViewRecords()}
+              className="rounded-xl"
+            />
+            <Button
+              onClick={handleViewRecords}
+              disabled={!lineIdInput.trim()}
+              className="w-full h-11 rounded-xl font-bold"
+              style={{ background: "#1B4965", color: "white" }}
+            >
+              查詢紀錄
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
