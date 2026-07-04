@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClipboardList, History, Leaf, Shield, Zap, Star } from "lucide-react";
 import { useAssessment } from "@/contexts/AssessmentContext";
+import { APP_VERSION } from "@shared/version";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -142,6 +143,13 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Footer with Version */}
+      <div className="container pb-6">
+        <div className="text-center text-xs text-gray-400">
+          <p>Putier Health · {APP_VERSION}</p>
         </div>
       </div>
 

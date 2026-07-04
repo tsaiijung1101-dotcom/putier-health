@@ -145,16 +145,28 @@ export default function Report() {
   const handleLineShare = () => {
     const symptomList = selectedSymptoms.map(id => `• ${getSymptomLabel(id)}`).join("\n");
 
-    // Build a concise message that fits within LINE's URL length limit (~2000 chars)
-    let text = `🌿 Putier 好轉反應評估報告\n\n👤 ${data.nickname}（${age}歲 ${gender === "male" ? "男性" : "女性"}）\n\n📋 保健需求（${selectedSymptoms.length}項）：\n${symptomList}\n\n💊 每日建議：${dosage.dailyCapsules} 顆\n📅 首套天數：${dosage.firstSetDays} 天\n⏱ 改善週期：${dosage.improvementCycles}`;
+    // Build per-symptom herx summary (limit to first 3 for URL safety)
+    const herxSummary = selectedSymptoms
+      .slice(0, 3)
+      .map(id => {
+        const reaction = HERX_REACTIONS.find(r => r.symptomId === id);
+        if (!reaction) return null;
+        const firstReaction = reaction.possibleReactions[0] || "";
+        return `• ${getSymptomLabel(id)}：${firstReaction}`;
+      })
+      .filter(Boolean)
+      .join("\n");
+
+    // Build the share text following the exact format spec
+    let text = `🌿 Putier 好轉反應評估報告\n\n👤 ${data.nickname}（${age}歲 ${gender === "male" ? "男性" : "女性"}）\n\n📋 保健需求：\n${symptomList}\n\n✨ 好轉反應預估（節錄）：\n${herxSummary || "（依個人體質而異）"}\n\n💊 每日建議：${dosage.dailyCapsules} 顆\n📅 首套天數：${dosage.firstSetDays} 天\n⏱ 改善週期：預計 4-6 個月稍感受到明顯改善，持續服用 3 個月以上以達到最佳效果。`;
 
     if (bmiData) text += `\n📊 BMI：${bmiData.bmi}（${bmiData.category}）`;
     if (waterData) text += `\n💧 每日喝水：${waterData.liters} 公升`;
 
-    text += `\n\n#Putier #好轉反應 #細胞修復`;
+    text += `\n\n當身體開始有好轉反應情況，請第一時間與您的推薦人討論用量增減。`;
 
-    // Ensure URL stays within safe length limit (LINE returns 400 if URL > ~2000 chars)
-    const MAX_TEXT_LENGTH = 300;
+    // Safety truncation for extreme cases
+    const MAX_TEXT_LENGTH = 1000;
     if (text.length > MAX_TEXT_LENGTH) {
       text = text.substring(0, MAX_TEXT_LENGTH - 3) + "...";
     }
