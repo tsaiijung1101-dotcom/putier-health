@@ -12,6 +12,7 @@ import {
   saveRecoveryLog,
   getRecoveryLogsByLineId,
 } from "./db";
+import { getInstantFeedback } from "@shared/recoveryAnalysis";
 
 // ── Assessment Router ─────────────────────────────────────
 const assessmentRouter = router({
@@ -127,6 +128,40 @@ export const appRouter = router({
       .input(z.object({ lineId: z.string().min(1) }))
       .query(async ({ input }) => {
         return getRecoveryLogsByLineId(input.lineId);
+      }),
+    getAnalysis: publicProcedure
+      .input(z.object({ lineId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const logs = await getRecoveryLogsByLineId(input.lineId);
+        if (logs.length === 0) return null;
+
+        const latestLog = logs[0];
+        const analysis = getInstantFeedback(latestLog.reactions as string[], latestLog.dosage);
+
+        // 趨勢分析：檢查是否連續 3 天出現特定反應
+        const recentLogs = logs.slice(0, 7);
+        const trends: string[] = [];
+
+        const reactionCounts: Record<string, number> = {};
+        recentLogs.forEach(log => {
+          (log.reactions as string[]).forEach(r => {
+            reactionCounts[r] = (reactionCounts[r] || 0) + 1;
+          });
+        });
+
+        Object.entries(reactionCounts).forEach(([reaction, count]) => {
+          if (count >= 3) {
+            if (reaction === 'fatigue') trends.push("您已連續多日感到疲倦，這是肝臟深層排毒的黃金期，請保持耐心。");
+            if (reaction === 'joint_pain') trends.push("持續的關節反應代表微循環正在深層疏通，請務必多喝溫水協助代謝。");
+          }
+        });
+
+        return {
+          ...analysis,
+          trends,
+          bigDataInsight: analysis.bigDataInsight,
+          lastReportDate: latestLog.reportDate
+        };
       }),
   }),
 });

@@ -7,14 +7,32 @@ import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity } from "lucid
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { APP_VERSION } from "@shared/version";
 import RecoveryLogForm from "@/components/assessment/RecoveryLogForm";
+import RecoveryAnalysisDialog from "@/components/assessment/RecoveryAnalysisDialog";
+import { trpc } from "@/lib/trpc";
 
 export default function Home() {
   const [, navigate] = useLocation();
   const { resetAssessment } = useAssessment();
   const [showRecordsDialog, setShowRecordsDialog] = useState(false);
   const [showLogDialog, setShowLogDialog] = useState(false);
+  const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
   const [lineIdInput, setLineIdInput] = useState("");
   const [logLineId, setLogLineId] = useState("");
+  const [analysisData, setAnalysisData] = useState<any>(null);
+
+  const analysisQuery = trpc.recovery.getAnalysis.useQuery(
+    { lineId: logLineId },
+    { enabled: false }
+  );
+
+  const handleLogSuccess = async () => {
+    setShowLogDialog(false);
+    const { data } = await analysisQuery.refetch();
+    if (data) {
+      setAnalysisData(data);
+      setShowAnalysisDialog(true);
+    }
+  };
 
   const handleStartAssessment = () => {
     resetAssessment();
@@ -230,12 +248,18 @@ export default function Home() {
               </div>
               <RecoveryLogForm 
                 lineId={logLineId} 
-                onSuccess={() => setShowLogDialog(false)} 
+                onSuccess={handleLogSuccess} 
               />
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <RecoveryAnalysisDialog
+        open={showAnalysisDialog}
+        onOpenChange={setShowAnalysisDialog}
+        analysis={analysisData}
+      />
     </div>
   );
 }
