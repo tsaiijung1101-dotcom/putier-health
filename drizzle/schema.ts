@@ -63,3 +63,17 @@ export const medicationImages = mysqlTable("medication_images", {
 
 export type MedicationImage = typeof medicationImages.$inferSelect;
 export type InsertMedicationImage = typeof medicationImages.$inferInsert;
+
+// 修復日誌表 (大數據收集)
+export const recoveryLogs = mysqlTable("recovery_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  lineId: varchar("lineId", { length: 100 }).notNull(),
+  dosage: int("dosage").notNull(), // 當日服用量
+  reactions: json("reactions").$type<string[]>().notNull(), // 身體反應勾選
+  notes: text("notes"), // 額外描述
+  reportDate: varchar("reportDate", { length: 20 }).notNull(), // 回報日期 YYYY-MM-DD
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RecoveryLog = typeof recoveryLogs.$inferSelect;
+export type InsertRecoveryLog = typeof recoveryLogs.$inferInsert;

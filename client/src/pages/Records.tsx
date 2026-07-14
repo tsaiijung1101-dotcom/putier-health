@@ -12,9 +12,10 @@ import {
   Calendar,
   User,
   ClipboardList,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
-import { SYMPTOM_CATEGORIES } from "../../../shared/healthData";
+import { SYMPTOM_CATEGORIES, COMMON_REACTIONS } from "../../../shared/healthData";
 
 function getSymptomLabel(id: string): string {
   for (const cat of SYMPTOM_CATEGORIES) {
@@ -22,6 +23,11 @@ function getSymptomLabel(id: string): string {
     if (item) return item.label;
   }
   return id;
+}
+
+function getReactionLabel(id: string): string {
+  const reaction = COMMON_REACTIONS.find(r => r.id === id);
+  return reaction ? reaction.label : id;
 }
 
 function calcAge(birthdate: string): number {
@@ -41,7 +47,12 @@ export default function Records() {
   const [lineId, setLineId] = useState(initialLineId);
   const [searchLineId, setSearchLineId] = useState(initialLineId);
 
-  const { data, isLoading, refetch } = trpc.assessment.getByLineId.useQuery(
+  const { data, isLoading } = trpc.assessment.getByLineId.useQuery(
+    { lineId: searchLineId },
+    { enabled: !!searchLineId }
+  );
+
+  const { data: logsData, isLoading: isLogsLoading } = trpc.recovery.getByLineId.useQuery(
     { lineId: searchLineId },
     { enabled: !!searchLineId }
   );
@@ -137,7 +148,7 @@ export default function Records() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-bold text-[#1B4965]">
-                找到 {data.length} 筆紀錄
+                評估紀錄 ({data.length})
               </div>
               <div className="text-xs text-gray-500">LINE ID: {searchLineId}</div>
             </div>
@@ -227,6 +238,45 @@ export default function Records() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Recovery Logs */}
+        {!isLogsLoading && logsData && logsData.length > 0 && (
+          <div className="space-y-3 mt-6">
+            <div className="text-sm font-bold text-[#22C55E] flex items-center gap-2">
+              <Activity size={16} />
+              修復日誌 ({logsData.length})
+            </div>
+            
+            {logsData.map((log) => (
+              <div key={log.id} className="putier-card border-l-4 border-l-[#22C55E]">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-800">{log.reportDate}</span>
+                    <span className="bg-[#22C55E]/10 text-[#22C55E] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      服用 {log.dosage} 顆
+                    </span>
+                  </div>
+                </div>
+                
+                {log.reactions && (log.reactions as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(log.reactions as string[]).map(r => (
+                      <span key={r} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
+                        {getReactionLabel(r)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {log.notes && (
+                  <div className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded-lg">
+                    "{log.notes}"
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

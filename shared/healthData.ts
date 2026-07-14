@@ -640,3 +640,21 @@ export function generateSecretary(nickname: string, symptoms: string[]): string 
     return `親愛的 ${nickname}，您有 ${symptomCount} 項保健需求，身體正在積極呼喚深層修復。Putier 將以六大頂尖技術為您的細胞提供全面修復支持。好轉反應可能會比較明顯，這代表身體修復力正在全力運作！請多喝水、充足休息，我們一起陪伴您走向健康！🌈💚`;
   }
 }
+
+// ── 常見好轉反應列表 (供回報日誌使用) ──────────────────────
+export const COMMON_REACTIONS = [
+  { id: "fatigue", label: "感到疲倦/嗜睡", category: "排毒反應" },
+  { id: "dizziness", label: "頭暈/頭痛", category: "排毒反應" },
+  { id: "skin_rash", label: "皮膚出疹/搔癢", category: "排毒反應" },
+  { id: "fever", label: "輕微發燒/發熱", category: "免疫活化" },
+  { id: "thirst", label: "口乾舌燥", category: "代謝反應" },
+  { id: "diarrhea", label: "腹瀉/排便增加", category: "消化調整" },
+  { id: "constipation", label: "便秘", category: "消化調整" },
+  { id: "joint_pain", label: "關節/肌肉痠痛加劇", category: "循環改善" },
+  { id: "insomnia", label: "短暫失眠/精神亢奮", category: "神經調節" },
+  { id: "nausea", label: "噁心/胃部不適", category: "消化調整" },
+  { id: "sweating", label: "出汗量增加", category: "排毒反應" },
+  { id: "heart_palpitation", label: "心跳加速/心悸", category: "循環改善" },
+  { id: "phlegm", label: "痰多/鼻涕增多", category: "排毒反應" },
+  { id: "other", label: "其他反應", category: "其他" },
+];

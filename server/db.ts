@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, assessments, medicationImages, InsertAssessment } from "../drizzle/schema";
+import { InsertUser, users, assessments, medicationImages, InsertAssessment, recoveryLogs, InsertRecoveryLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -103,4 +103,24 @@ export async function getMedicationImagesByAssessmentId(assessmentId: number) {
     .select()
     .from(medicationImages)
     .where(eq(medicationImages.assessmentId, assessmentId));
+}
+
+// ── Recovery Log helpers ──────────────────────────────────
+
+export async function saveRecoveryLog(data: InsertRecoveryLog): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(recoveryLogs).values(data);
+  // @ts-ignore - mysql2 returns insertId
+  return result[0].insertId as number;
+}
+
+export async function getRecoveryLogsByLineId(lineId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(recoveryLogs)
+    .where(eq(recoveryLogs.lineId, lineId))
+    .orderBy(desc(recoveryLogs.createdAt));
 }

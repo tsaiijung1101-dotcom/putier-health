@@ -3,15 +3,18 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, History, Leaf, Shield, Zap, Star } from "lucide-react";
+import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity } from "lucide-react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { APP_VERSION } from "@shared/version";
+import RecoveryLogForm from "@/components/assessment/RecoveryLogForm";
 
 export default function Home() {
   const [, navigate] = useLocation();
   const { resetAssessment } = useAssessment();
   const [showRecordsDialog, setShowRecordsDialog] = useState(false);
+  const [showLogDialog, setShowLogDialog] = useState(false);
   const [lineIdInput, setLineIdInput] = useState("");
+  const [logLineId, setLogLineId] = useState("");
 
   const handleStartAssessment = () => {
     resetAssessment();
@@ -44,7 +47,7 @@ export default function Home() {
             <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
           </div>
           <h1 className="text-2xl font-bold mb-2 leading-tight">
-            好轉反應<br />自主查詢系統
+            好轉反應與修復進度<br />大數據查詢系統
           </h1>
           <p className="text-sm opacity-80 mb-6 leading-relaxed">
             根據您的個人健康狀況，<br />
@@ -66,6 +69,16 @@ export default function Home() {
             >
               <History size={18} className="mr-2" />
               查看紀錄
+            </Button>
+          </div>
+          
+          <div className="mt-4">
+            <Button
+              onClick={() => setShowLogDialog(true)}
+              className="w-full h-12 text-base font-bold rounded-xl border-2 border-[#22C55E] text-white bg-[#22C55E]/20 hover:bg-[#22C55E]/30 backdrop-blur-sm"
+            >
+              <Activity size={18} className="mr-2" />
+              回報今日修復進度
             </Button>
           </div>
         </div>
@@ -155,7 +168,7 @@ export default function Home() {
 
       {/* Records Dialog */}
       <Dialog open={showRecordsDialog} onOpenChange={setShowRecordsDialog}>
-        <DialogContent className="mx-4 rounded-2xl">
+        <DialogContent className="mx-4 rounded-2xl max-w-[90vw]">
           <DialogHeader>
             <DialogTitle className="text-[#1B4965]">查看客戶紀錄</DialogTitle>
           </DialogHeader>
@@ -177,6 +190,50 @@ export default function Home() {
               查詢紀錄
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recovery Log Dialog */}
+      <Dialog open={showLogDialog} onOpenChange={setShowLogDialog}>
+        <DialogContent className="mx-4 rounded-2xl max-w-[90vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B4965]">回報今日修復進度</DialogTitle>
+          </DialogHeader>
+          {!logLineId ? (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-gray-600">請輸入您的 LINE ID 以開始回報</p>
+              <Input
+                placeholder="請輸入 LINE ID"
+                value={lineIdInput}
+                onChange={e => setLineIdInput(e.target.value)}
+                className="rounded-xl"
+              />
+              <Button
+                onClick={() => setLogLineId(lineIdInput.trim())}
+                disabled={!lineIdInput.trim()}
+                className="w-full h-11 rounded-xl font-bold"
+                style={{ background: "#1B4965", color: "white" }}
+              >
+                開始回報
+              </Button>
+            </div>
+          ) : (
+            <div className="pt-2">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xs text-gray-400">LINE ID: {logLineId}</span>
+                <button 
+                  onClick={() => setLogLineId("")}
+                  className="text-xs text-[#1B4965] underline"
+                >
+                  修改 ID
+                </button>
+              </div>
+              <RecoveryLogForm 
+                lineId={logLineId} 
+                onSuccess={() => setShowLogDialog(false)} 
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

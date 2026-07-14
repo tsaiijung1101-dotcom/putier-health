@@ -9,6 +9,8 @@ import {
   getAssessmentById,
   getMedicationImagesByAssessmentId,
   saveMedicationImage,
+  saveRecoveryLog,
+  getRecoveryLogsByLineId,
 } from "./db";
 
 // ── Assessment Router ─────────────────────────────────────
@@ -100,6 +102,33 @@ export const appRouter = router({
     }),
   }),
   assessment: assessmentRouter,
+  recovery: router({
+    create: publicProcedure
+      .input(
+        z.object({
+          lineId: z.string().min(1),
+          dosage: z.number().min(0),
+          reactions: z.array(z.string()),
+          notes: z.string().optional(),
+          reportDate: z.string(), // YYYY-MM-DD
+        })
+      )
+      .mutation(async ({ input }) => {
+        const id = await saveRecoveryLog({
+          lineId: input.lineId,
+          dosage: input.dosage,
+          reactions: input.reactions,
+          notes: input.notes ?? null,
+          reportDate: input.reportDate,
+        });
+        return { id };
+      }),
+    getByLineId: publicProcedure
+      .input(z.object({ lineId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return getRecoveryLogsByLineId(input.lineId);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
