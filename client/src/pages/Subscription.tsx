@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Zap, BarChart3, Bell, CheckCircle2, ArrowRight } from "lucide-react";
+import { ShieldCheck, Zap, BarChart3, Bell, CheckCircle2, ArrowRight, ChevronLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function Subscription() {
+  const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
   const createSession = trpc.subscription.createSession.useMutation();
 
@@ -25,14 +27,22 @@ export default function Subscription() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-[#1B4965] text-white p-8 pt-12 rounded-b-[3rem] shadow-xl">
-        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
-          <ShieldCheck className="text-[#22C55E]" />
-          升級專業版
-        </h1>
-        <p className="text-white/80 text-sm">
-          解鎖大數據修復分析，開啟您的精準健康管理之旅。
-        </p>
+      <div className="bg-[#1B4965] text-white p-8 pt-12 rounded-b-[3rem] shadow-xl relative">
+        <button 
+          onClick={() => navigate("/")}
+          className="absolute top-10 left-6 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div className="mt-4">
+          <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+            <ShieldCheck className="text-[#22C55E]" />
+            升級專業版
+          </h1>
+          <p className="text-white/80 text-sm">
+            解鎖大數據修復分析，開啟您的精準健康管理之旅。
+          </p>
+        </div>
       </div>
 
       <div className="px-6 -mt-8">

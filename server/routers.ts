@@ -12,6 +12,7 @@ import {
   saveRecoveryLog,
   getRecoveryLogsByLineId,
   getUserByOpenId,
+  updateUserSubscription,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -206,6 +207,21 @@ export const appRouter = router({
       const user = ctx.user;
       if (!user) throw new Error("Unauthorized");
       return createCheckoutSession(user.openId, user.email || undefined);
+    }),
+    activateMock: publicProcedure.mutation(async ({ ctx }) => {
+      const user = ctx.user;
+      if (!user) throw new Error("Unauthorized");
+      
+      const expiresAt = new Date();
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      
+      await updateUserSubscription(user.openId, {
+        subscriptionStatus: 'active',
+        subscriptionExpiresAt: expiresAt,
+        stripeCustomerId: 'mock_customer_id',
+      });
+      
+      return { success: true };
     }),
   }),
 });

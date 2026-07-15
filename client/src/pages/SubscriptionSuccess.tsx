@@ -3,12 +3,24 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, PartyPopper, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export default function SubscriptionSuccess() {
   const [, navigate] = useLocation();
+  const utils = trpc.useUtils();
+  const activateMutation = trpc.subscription.activateMock.useMutation();
 
   useEffect(() => {
-    toast.success("訂閱成功！歡迎加入專業版。");
+    const activate = async () => {
+      try {
+        await activateMutation.mutateAsync();
+        utils.auth.me.invalidate();
+        toast.success("訂閱成功！歡迎加入專業版。");
+      } catch (error) {
+        console.error("Activation error:", error);
+      }
+    };
+    activate();
   }, []);
 
   return (
