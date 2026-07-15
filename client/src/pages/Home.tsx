@@ -34,7 +34,14 @@ export default function Home() {
     }
   };
 
+  const { data: user } = trpc.auth.me.useQuery();
+  const isPro = user?.subscriptionStatus === 'active';
+
   const handleStartAssessment = () => {
+    if (!isPro) {
+      navigate("/subscription");
+      return;
+    }
     resetAssessment();
     navigate("/assessment");
   };
@@ -92,7 +99,13 @@ export default function Home() {
           
           <div className="mt-4">
             <Button
-              onClick={() => setShowLogDialog(true)}
+              onClick={() => {
+                if (!isPro) {
+                  navigate("/subscription");
+                  return;
+                }
+                setShowLogDialog(true);
+              }}
               className="w-full h-12 text-base font-bold rounded-xl border-2 border-[#22C55E] text-white bg-[#22C55E]/20 hover:bg-[#22C55E]/30 backdrop-blur-sm"
             >
               <Activity size={18} className="mr-2" />

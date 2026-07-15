@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { handleWebhook } from "../stripe";
+import { updateUserSubscription } from "../db";
 import { serveStatic, setupVite } from "./vite";
 import { registerUploadRoutes } from "../uploadRoute";
 
@@ -38,6 +40,39 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerUploadRoutes(app);
+  // ── Stripe Webhook ─────────────────────────────────────
+  app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    let event;
+
+    try {
+      event = await handleWebhook(req.body, sig);
+      
+      // 處理支付成功
+      if (event && event.type === 'checkout.session.completed') {
+        const session = event.data.object as any;
+        const userOpenId = session.metadata.userOpenId;
+        
+        // 延長 1 年訂閱
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        
+        await updateUserSubscription(userOpenId, {
+          subscriptionStatus: 'active',
+          subscriptionExpiresAt: expiresAt,
+          stripeCustomerId: session.customer as string,
+        });
+        
+        console.log(`[Stripe] Subscription activated for user: ${userOpenId}`);
+      }
+      
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error(`[Stripe] Webhook Error: ${err.message}`);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -9,6 +9,8 @@ import Home from "./pages/Home";
 import Assessment from "./pages/Assessment";
 import Report from "./pages/Report";
 import Records from "./pages/Records";
+import Subscription from "./pages/Subscription";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 
 function Router() {
   return (
@@ -17,6 +19,8 @@ function Router() {
       <Route path="/assessment" component={Assessment} />
       <Route path="/report/:id" component={Report} />
       <Route path="/records" component={Records} />
+      <Route path="/subscription" component={Subscription} />
+      <Route path="/subscription/success" component={SubscriptionSuccess} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

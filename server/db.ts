@@ -124,3 +124,13 @@ export async function getRecoveryLogsByLineId(lineId: string) {
     .where(eq(recoveryLogs.lineId, lineId))
     .orderBy(desc(recoveryLogs.createdAt));
 }
+
+export async function updateUserSubscription(openId: string, data: {
+  subscriptionStatus: string;
+  subscriptionExpiresAt?: Date | null;
+  stripeCustomerId?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set(data).where(eq(users.openId, openId));
+}

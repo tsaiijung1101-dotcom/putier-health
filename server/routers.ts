@@ -11,8 +11,11 @@ import {
   saveMedicationImage,
   saveRecoveryLog,
   getRecoveryLogsByLineId,
+  getUserByOpenId,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
+import { createCheckoutSession } from "./stripe";
+import { appendRow } from "./googleSheets";
 
 // ── Assessment Router ─────────────────────────────────────
 const assessmentRouter = router({
@@ -72,6 +75,24 @@ const assessmentRouter = router({
           )
         );
       }
+
+      // 同步到 Google Sheets
+      await appendRow('評估報告!A:M', [
+        new Date().toLocaleString('zh-TW'),
+        input.lineId || '匿名',
+        input.nickname,
+        input.birthdate,
+        input.gender === 'male' ? '男' : '女',
+        input.bmi || 'N/A',
+        input.dailyWater || 'N/A',
+        input.selectedSymptoms.join(', '),
+        input.recommendedDosage || 'N/A',
+        input.firstSetDays || 'N/A',
+        input.medications || '無',
+        input.surgeryHistory || '無',
+        `ID: ${id}`
+      ]);
+
       return { id };
     }),
 
@@ -95,7 +116,12 @@ const assessmentRouter = router({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async ({ ctx }) => {
+      const user = ctx.user;
+      if (!user) return null;
+      const dbUser = await getUserByOpenId(user.openId);
+      return dbUser || user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -122,6 +148,17 @@ export const appRouter = router({
           notes: input.notes ?? null,
           reportDate: input.reportDate,
         });
+
+        // 同步到 Google Sheets
+        await appendRow('修復日誌!A:F', [
+          new Date().toLocaleString('zh-TW'),
+          input.lineId,
+          input.dosage,
+          input.reactions.join(', '),
+          input.notes || '無',
+          input.reportDate
+        ]);
+
         return { id };
       }),
     getByLineId: publicProcedure
@@ -163,6 +200,13 @@ export const appRouter = router({
           lastReportDate: latestLog.reportDate
         };
       }),
+  }),
+  subscription: router({
+    createSession: publicProcedure.mutation(async ({ ctx }) => {
+      const user = ctx.user;
+      if (!user) throw new Error("Unauthorized");
+      return createCheckoutSession(user.openId, user.email || undefined);
+    }),
   }),
 });
 
