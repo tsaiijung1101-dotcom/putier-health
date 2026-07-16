@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity } from "lucide-react";
+import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity, Crown, Calendar, Settings } from "lucide-react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { APP_VERSION } from "@shared/version";
 import RecoveryLogForm from "@/components/assessment/RecoveryLogForm";
@@ -65,11 +65,27 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white transform -translate-x-16 translate-y-16" />
         </div>
         <div className="relative container py-10 text-white">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <Leaf size={22} className="text-[#22C55E]" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Leaf size={22} className="text-[#22C55E]" />
+              </div>
+              <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
             </div>
-            <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
+            {isPro && (
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30 animate-pulse">
+                  <Crown size={14} className="text-white" />
+                  <span className="text-[10px] font-black text-white tracking-wider uppercase">Pro Member</span>
+                </div>
+                {user?.subscriptionExpiresAt && (
+                  <div className="flex items-center gap-1 mt-1 opacity-60">
+                    <Calendar size={10} />
+                    <span className="text-[9px]">有效期至 {new Date(user.subscriptionExpiresAt).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <h1 className="text-2xl font-bold mb-2 leading-tight">
             好轉反應與修復進度<br />大數據查詢系統
@@ -190,10 +206,20 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer with Version */}
+      {/* Footer with Version & Hidden Admin Link */}
       <div className="container pb-6">
         <div className="text-center text-xs text-gray-400">
-          <p>Putier Health · {APP_VERSION}</p>
+          <p 
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (confirm("是否進入管理員後台？")) {
+                navigate("/admin");
+              }
+            }}
+            className="cursor-default select-none active:opacity-50 transition-opacity"
+          >
+            Putier Health · {APP_VERSION}
+          </p>
         </div>
       </div>
 
