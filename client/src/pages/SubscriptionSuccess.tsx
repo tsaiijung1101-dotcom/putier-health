@@ -75,8 +75,10 @@ export default function SubscriptionSuccess() {
 
       <Button
         onClick={async () => {
-          await utils.auth.me.invalidate();
-          navigate("/");
+          // 強制刷新緩存並等待一下，確保後端 DB 更新已完成
+          await utils.auth.me.refetch();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          window.location.href = "/"; // 使用強制重整回到首頁，確保狀態完全清空
         }}
         className="w-full max-w-xs h-14 rounded-2xl text-lg font-bold shadow-lg"
         style={{ background: "#1B4965", color: "white" }}

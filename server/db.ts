@@ -132,5 +132,21 @@ export async function updateUserSubscription(openId: string, data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(users).set(data).where(eq(users.openId, openId));
+  
+  console.log(`[DB] Updating subscription for ${openId} to ${data.subscriptionStatus}`);
+  
+  // Try to update first
+  const result = await db.update(users).set(data).where(eq(users.openId, openId));
+  
+  // If no rows affected, the user might not exist, so insert them
+  // @ts-ignore - mysql2 returns affectedRows
+  if (result[0].affectedRows === 0) {
+    console.log(`[DB] User ${openId} not found during subscription update, creating new user`);
+    await db.insert(users).values({
+      openId,
+      ...data
+    });
+  }
+  
+  console.log(`[DB] Subscription update process completed for ${openId}`);
 }
