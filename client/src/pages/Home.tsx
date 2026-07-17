@@ -39,10 +39,7 @@ export default function Home() {
   const isPro = user?.subscriptionStatus === 'active';
 
   const handleStartAssessment = () => {
-    if (!isPro) {
-      navigate("/subscription");
-      return;
-    }
+    // 移除 Pro 限制，讓所有人都能開始評估
     resetAssessment();
     navigate("/assessment");
   };
@@ -66,27 +63,39 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white transform -translate-x-16 translate-y-16" />
         </div>
         <div className="relative container py-10 text-white">
-          <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                 <Leaf size={22} className="text-[#22C55E]" />
               </div>
               <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
             </div>
-            {isPro && (
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30 animate-pulse">
-                  <Crown size={14} className="text-white" />
-                  <span className="text-[10px] font-black text-white tracking-wider uppercase">Pro Member</span>
-                </div>
-                {user?.subscriptionExpiresAt && (
-                  <div className="flex items-center gap-1 mt-1 opacity-60">
-                    <Calendar size={10} />
-                    <span className="text-[9px]">有效期至 {new Date(user.subscriptionExpiresAt).toLocaleDateString()}</span>
+            
+            {/* Pro Member 皇冠標識 - 始終顯示或根據狀態顯示 */}
+            <div className="flex flex-col items-end">
+              {isPro ? (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30 animate-pulse">
+                    <Crown size={14} className="text-white" />
+                    <span className="text-[10px] font-black text-white tracking-wider uppercase">Pro Member</span>
                   </div>
-                )}
-              </div>
-            )}
+                  {user?.subscriptionExpiresAt && (
+                    <div className="flex items-center gap-1 mt-1 opacity-60">
+                      <Calendar size={10} />
+                      <span className="text-[9px]">有效期至 {new Date(user.subscriptionExpiresAt).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div 
+                  onClick={() => navigate("/subscription")}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 cursor-pointer transition-colors"
+                >
+                  <Crown size={14} className="text-white/40" />
+                  <span className="text-[10px] font-bold text-white/60 tracking-wider uppercase">Upgrade to Pro</span>
+                </div>
+              )}
+            </div>
           </div>
           <h1 className="text-2xl font-bold mb-2 leading-tight">
             好轉反應與修復進度<br />大數據查詢系統
