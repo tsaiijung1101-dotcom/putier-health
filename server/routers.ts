@@ -15,6 +15,7 @@ import {
   toggleFavoriteAssessment,
   updateUserSubscription,
   getUserByOpenId,
+  deleteAssessment,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -100,6 +101,13 @@ const assessmentRouter = router({
     .input(z.object({ id: z.number(), isFavorite: z.boolean() }))
     .mutation(async ({ input }) => {
       await toggleFavoriteAssessment(input.id, input.isFavorite);
+      return { success: true };
+    }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteAssessment(input.id);
       return { success: true };
     }),
 

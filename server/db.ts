@@ -92,6 +92,12 @@ export async function toggleFavoriteAssessment(id: number, isFavorite: boolean) 
   await db.update(assessments).set({ isFavorite }).where(eq(assessments.id, id));
 }
 
+export async function deleteAssessment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(assessments).where(eq(assessments.id, id));
+}
+
 export async function getAssessmentById(id: number) {
   const db = await getDb();
   if (!db) return undefined;

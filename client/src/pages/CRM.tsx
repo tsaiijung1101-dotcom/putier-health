@@ -8,11 +8,13 @@ import {
   Star, 
   ChevronRight, 
   ArrowLeft, 
-  Filter, 
-  MoreVertical,
   Calendar,
   User as UserIcon,
-  LogOut
+  LogOut,
+  Activity,
+  UserCheck,
+  ClipboardList,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +27,6 @@ export default function CRM() {
   const { state, logoutLeader } = useAssessment();
   const { leader } = state;
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterFavorite, setFilterFavorite] = useState(false);
 
   // 權限檢查
   if (!leader) {
@@ -33,7 +34,7 @@ export default function CRM() {
     return null;
   }
 
-  const { data: assessments, isLoading, refetch } = trpc.assessment.getByLeader.useQuery({
+  const { data: assessments, isLoading, refetch } = trpc.assessment.listByLeader.useQuery({
     leaderLineUrl: leader.lineUrl
   });
 
@@ -41,14 +42,40 @@ export default function CRM() {
     onSuccess: () => refetch()
   });
 
+  const deleteAssessment = trpc.assessment.delete.useMutation({
+    onSuccess: () => {
+      toast.success("紀錄已刪除");
+      refetch();
+    }
+  });
+
+  // 統計數據
+  const stats = useMemo(() => {
+    if (!assessments) return { total: 0, symptoms: 0, male: 0, female: 0 };
+    return {
+      total: assessments.length,
+      symptoms: assessments.reduce((acc, curr) => acc + (curr.symptoms as string[]).length, 0),
+      male: assessments.filter(a => a.gender === 'male').length,
+      female: assessments.filter(a => a.gender === 'female').length,
+    };
+  }, [assessments]);
+
+  // 排序與搜尋邏輯：星號最愛置頂，然後按日期排序
   const filteredData = useMemo(() => {
     if (!assessments) return [];
-    return assessments.filter(a => {
-      const matchSearch = a.nickname.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchFavorite = filterFavorite ? a.isFavorite : true;
-      return matchSearch && matchFavorite;
-    });
-  }, [assessments, searchTerm, filterFavorite]);
+    return assessments
+      .filter(a => 
+        a.nickname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (a.symptoms as string[]).some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      .sort((a, b) => {
+        // 星號置頂
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        // 日期排序
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [assessments, searchTerm]);
 
   const handleLogout = () => {
     logoutLeader();
@@ -56,133 +83,193 @@ export default function CRM() {
     toast.success("已成功登出領導人系統");
   };
 
+  const getAge = (birthdate: string) => {
+    const birth = new Date(birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
   return (
-    <div className="min-h-screen bg-[#F0F4F8] pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="rounded-full">
-              <ArrowLeft size={20} />
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-4 shadow-sm">
+        <div className="container max-w-md mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="rounded-full">
+                <ArrowLeft size={20} />
+              </Button>
+              <h1 className="text-xl font-bold text-[#1B4965]">客戶管理中心</h1>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500">
+              <LogOut size={20} />
             </Button>
-            <h1 className="text-xl font-bold text-[#1B4965]">客戶管理中心</h1>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500">
-            <LogOut size={20} />
-          </Button>
-        </div>
 
-        {/* Leader Profile Card */}
-        <div className="bg-gradient-to-r from-[#1B4965] to-[#2d6a8f] rounded-2xl p-4 text-white mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <UserIcon size={24} />
-            </div>
-            <div>
-              <div className="font-bold">{leader.name || "領導人"}</div>
-              <div className="text-xs opacity-80">{leader.lineUrl}</div>
-            </div>
-            <Badge className="ml-auto bg-amber-400 text-[#1B4965] border-none font-bold">
-              {leader.status.toUpperCase()}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Search & Filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+          {/* Search */}
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <Input 
-              placeholder="搜尋客戶姓名..." 
-              className="pl-9 rounded-xl border-gray-200"
+              placeholder="搜尋客戶姓名或症狀..." 
+              className="pl-9 rounded-xl border-gray-100 bg-gray-50 focus-visible:ring-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button 
-            variant={filterFavorite ? "default" : "outline"} 
-            size="icon" 
-            className="rounded-xl"
-            onClick={() => setFilterFavorite(!filterFavorite)}
-            style={filterFavorite ? { background: "#1B4965" } : {}}
-          >
-            <Star size={18} fill={filterFavorite ? "white" : "none"} />
-          </Button>
         </div>
       </div>
 
-      {/* List Section */}
-      <div className="px-4 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm font-bold text-gray-500">
-            共 {filteredData.length} 位客戶
+      <div className="container max-w-md mx-auto px-4 py-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
+            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
+              <ClipboardList size={18} className="text-blue-500" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">總評估次數</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
+            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center mb-2">
+              <Activity size={18} className="text-purple-500" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{stats.symptoms}</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">記錄症狀數</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center mb-2">
+              <UserCheck size={18} className="text-indigo-500" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{stats.male}</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">男性記錄</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
+            <div className="w-8 h-8 bg-pink-50 rounded-lg flex items-center justify-center mb-2">
+              <UserIcon size={18} className="text-pink-500" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{stats.female}</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">女性記錄</div>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
-          </div>
-        ) : filteredData.length > 0 ? (
-          <div className="space-y-3">
-            {filteredData.map((item) => (
-              <div 
-                key={item.id}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 active:scale-[0.98] transition-transform"
-                onClick={() => navigate(`/report/${item.id}`)}
-              >
-                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-[#1B4965] font-bold text-lg">
-                  {item.nickname[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-gray-800 truncate">{item.nickname}</span>
-                    {item.gender === 'female' ? (
-                      <Badge className="bg-pink-100 text-pink-600 border-none text-[10px] px-1.5 h-4">女</Badge>
-                    ) : (
-                      <Badge className="bg-blue-100 text-blue-600 border-none text-[10px] px-1.5 h-4">男</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users size={12} />
-                      {(item.symptoms as string[]).length} 項需求
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite.mutate({ id: item.id, isFavorite: !item.isFavorite });
-                    }}
-                  >
-                    <Star 
-                      size={20} 
-                      className={item.isFavorite ? "text-amber-400" : "text-gray-200"} 
-                      fill={item.isFavorite ? "currentColor" : "none"} 
-                    />
-                  </Button>
-                  <ChevronRight size={18} className="text-gray-300" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
-              <Users size={40} />
+        {/* List Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+              <Users size={18} className="text-blue-500" />
+              客戶紀錄清單
+            </h3>
+            <div className="text-[10px] font-bold text-gray-400">
+              共 {filteredData.length} 筆
             </div>
-            <p className="text-gray-400">暫無客戶資料</p>
           </div>
-        )}
+
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
+            </div>
+          ) : filteredData.length > 0 ? (
+            <div className="space-y-4">
+              {filteredData.map((item) => {
+                const reportData = item.reportData as any;
+                const age = getAge(item.birthday);
+                
+                return (
+                  <div 
+                    key={item.id}
+                    className={`bg-white rounded-2xl p-5 shadow-sm border transition-all active:scale-[0.99] ${
+                      item.isFavorite ? 'border-yellow-200 bg-yellow-50/30' : 'border-gray-50'
+                    }`}
+                    onClick={() => navigate(`/report/${item.id}`)}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-lg ${
+                          item.gender === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
+                        }`}>
+                          {item.nickname[0]}
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-800 flex items-center gap-2">
+                            {item.nickname}
+                            <Badge variant="outline" className="font-normal text-[10px] px-1.5 h-4 border-gray-200 text-gray-400">
+                              {age} 歲
+                            </Badge>
+                          </div>
+                          <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5 font-medium">
+                            <Calendar size={10} />
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite.mutate({ id: item.id, isFavorite: !item.isFavorite });
+                          }}
+                          className={`p-2 rounded-xl transition-colors ${
+                            item.isFavorite ? 'text-yellow-500 bg-yellow-100' : 'text-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Star size={20} fill={item.isFavorite ? "currentColor" : "none"} />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("確定要刪除此筆紀錄嗎？")) {
+                              deleteAssessment.mutate({ id: item.id });
+                            }
+                          }}
+                          className="p-2 text-gray-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-gray-50/50 rounded-xl p-3 border border-gray-100/50">
+                        <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">身體指標</div>
+                        <div className="text-xs text-gray-700 font-semibold">
+                          {item.height ? `${item.height}cm` : '--'} / {item.weight ? `${item.weight}kg` : '--'}
+                        </div>
+                      </div>
+                      <div className="bg-blue-50/30 rounded-xl p-3 border border-blue-100/30">
+                        <div className="text-[9px] text-blue-400 font-bold uppercase tracking-wider mb-1">建議服用量</div>
+                        <div className="text-xs text-blue-600 font-bold">
+                          每日 {reportData?.recommendedDosage || '--'} 顆
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {(item.symptoms as string[]).map((sId, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-white text-gray-500 text-[10px] font-bold rounded-lg border border-gray-100">
+                          {sId}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-end mt-4 text-[10px] font-bold text-blue-500 gap-1">
+                      查看完整報告 <ChevronRight size={12} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-gray-200">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users size={32} className="text-gray-200" />
+              </div>
+              <p className="text-gray-400 text-sm font-medium">目前尚無符合的紀錄</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

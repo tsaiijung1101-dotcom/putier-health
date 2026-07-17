@@ -174,6 +174,12 @@ export default function Step3Report() {
   const saveReport = useCallback(() => {
     if (saved) return;
     
+    // 儲存分流：只有已登入領導人狀態下才寫入資料庫
+    if (!state.leader) {
+      console.log("免費版評估：不調用 API，不寫入雲端資料庫");
+      return;
+    }
+
     // 將完整的報告數據打包成 JSON
     const reportData = {
       recommendedDosage: dosage.dailyCapsules,
@@ -185,7 +191,7 @@ export default function Step3Report() {
     };
 
     createAssessment.mutate({
-      leaderLineUrl: state.leader?.lineUrl || undefined,
+      leaderLineUrl: state.leader.lineUrl,
       nickname: basicInfo.nickname,
       birthdate: basicInfo.birthdate,
       gender,
