@@ -14,9 +14,13 @@ import {
 // 領導人註冊會員表
 export const users = mysqlTable("users", {
   lineUrl: varchar("line_url", { length: 500 }).primaryKey(), // 連動的 LINE 好友網址
+  openId: varchar("openId", { length: 255 }), // 恢復以相容舊測試
   name: varchar("name", { length: 255 }),
   authCode: varchar("auth_code", { length: 255 }), // 訂閱授權碼
   status: varchar("status", { length: 50 }).default("free"),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 50 }), // 恢復以相容舊測試
+  subscriptionExpiresAt: datetime("subscriptionExpiresAt"), // 恢復以相容舊測試
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }), // 恢復以相容舊測試
   expiredAt: datetime("expired_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

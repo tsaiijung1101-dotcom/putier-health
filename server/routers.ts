@@ -1,5 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { getSessionCookieOptions, COOKIE_NAME } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
@@ -14,6 +13,8 @@ import {
   getUserByLineUrl,
   upsertUser,
   toggleFavoriteAssessment,
+  updateUserSubscription,
+  getUserByOpenId,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -116,6 +117,12 @@ const assessmentRouter = router({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
+    me: publicProcedure.query(async ({ ctx }) => {
+      const user = ctx.user;
+      if (!user) return null;
+      const dbUser = await getUserByOpenId(user.openId);
+      return dbUser || user;
+    }),
     leaderLogin: publicProcedure
       .input(z.object({ lineUrl: z.string().min(1), authCode: z.string().optional() }))
       .mutation(async ({ input }) => {
@@ -131,6 +138,11 @@ export const appRouter = router({
         }
         return user;
       }),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return { success: true } as const;
+    }),
   }),
   assessment: assessmentRouter,
   recovery: router({

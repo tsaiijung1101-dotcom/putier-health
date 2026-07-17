@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity, Crown, Calendar, Settings } from "lucide-react";
+import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity, Crown, Calendar, Settings, User } from "lucide-react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { APP_VERSION } from "@shared/version";
 import RecoveryLogForm from "@/components/assessment/RecoveryLogForm";
@@ -104,28 +104,56 @@ export default function Home() {
               <span className="text-sm font-medium opacity-80">Putier 細胞修復</span>
             </div>
             
-            {/* Pro Member 皇冠標識 - 始終顯示或根據狀態顯示 */}
-            <div className="flex flex-col items-end">
-              {isPro ? (
-                <>
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30 animate-pulse">
-                    <Crown size={14} className="text-white" />
-                    <span className="text-[10px] font-black text-white tracking-wider uppercase">Pro Member</span>
+            {/* 領導人專區與 Pro 標識 */}
+            <div className="flex flex-col items-end gap-2">
+              {leader ? (
+                <div className="flex flex-col items-end gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                      <span className="text-[10px] font-bold text-white tracking-wider truncate max-w-[100px]">
+                        顧問：{leader.lineUrl.split('/').pop() || '已連動'}
+                      </span>
+                    </div>
+                    <Button 
+                      onClick={() => navigate("/crm")}
+                      size="sm"
+                      className="h-7 px-3 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-[#1B4965] border-none rounded-full font-bold shadow-lg"
+                    >
+                      <Activity size={12} className="mr-1" />
+                      <span className="text-[10px]">查看健康紀錄</span>
+                    </Button>
                   </div>
-                  {user?.subscriptionExpiresAt && (
-                    <div className="flex items-center gap-1 mt-1 opacity-60">
-                      <Calendar size={10} />
-                      <span className="text-[9px]">有效期至 {new Date(user.subscriptionExpiresAt).toLocaleDateString()}</span>
+                  {isPro && (
+                    <div className="flex items-center gap-1.5 px-3 py-0.5 bg-gradient-to-r from-amber-400/20 to-amber-600/20 rounded-full border border-amber-300/30">
+                      <Crown size={10} className="text-amber-400" />
+                      <span className="text-[9px] font-black text-amber-400 tracking-wider uppercase">Pro</span>
                     </div>
                   )}
-                </>
+                </div>
               ) : (
-                <div 
-                  onClick={() => navigate("/subscription")}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 cursor-pointer transition-colors"
-                >
-                  <Crown size={14} className="text-white/40" />
-                  <span className="text-[10px] font-bold text-white/60 tracking-wider uppercase">Upgrade to Pro</span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <div 
+                    onClick={() => setShowLeaderLogin(true)}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 cursor-pointer transition-colors"
+                  >
+                    <User size={14} className="text-white/80" />
+                    <span className="text-[10px] font-bold text-white/90 tracking-wider">領導人專區</span>
+                  </div>
+                  {isPro ? (
+                    <div className="flex items-center gap-1.5 px-3 py-0.5 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30">
+                      <Crown size={10} className="text-white" />
+                      <span className="text-[9px] font-black text-white tracking-wider uppercase">Pro Member</span>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => navigate("/subscription")}
+                      className="flex items-center gap-1.5 px-3 py-0.5 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer transition-colors"
+                    >
+                      <Crown size={10} className="text-white/40" />
+                      <span className="text-[9px] font-bold text-white/50 tracking-wider uppercase">Upgrade</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

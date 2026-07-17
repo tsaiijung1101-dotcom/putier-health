@@ -144,29 +144,37 @@ export default function Report() {
   }, {});
 
   const handleLineShare = () => {
+    // 優先順序：網址參數 > 領導人登入狀態 > localStorage 緩存
+    const searchParams = new URLSearchParams(window.location.search);
+    const refLine = searchParams.get('line') || (data.leader_line_url as string) || localStorage.getItem('putier_ref_line') || "";
+
     const symptomList = selectedSymptoms.map(id => `• ${getSymptomLabel(id)}`).join("\n");
 
-    // Build per-symptom herx summary (limit to first 3 for URL safety)
+    // 彙整好轉反應
     const herxSummary = selectedSymptoms
-      .slice(0, 3)
       .map(id => {
         const reaction = HERX_REACTIONS.find(r => r.symptomId === id);
         if (!reaction) return null;
-        const firstReaction = reaction.possibleReactions[0] || "";
-        return `• ${getSymptomLabel(id)}：${firstReaction}`;
+        return `• ${getSymptomLabel(id)}：${reaction.possibleReactions.join("、")}`;
       })
       .filter(Boolean)
       .join("\n");
 
-    // Build the share text following the exact format spec
-    let text = `🌿 Putier 好轉反應評估報告\n\n👤 ${data.nickname}（${age}歲 ${gender === "male" ? "男性" : "女性"}）\n\n📋 保健需求：\n${symptomList}\n\n✨ 好轉反應預估（節錄）：\n${herxSummary || "（依個人體質而異）"}\n\n💊 每日建議：${dosage.dailyCapsules} 顆\n📅 首套天數：${dosage.firstSetDays} 天\n⏱ 改善週期：預計 4-6 個月稍感受到明顯改善，持續服用 3 個月以上以達到最佳效果。`;
+    const basicInfoText = [
+      `👤 姓名：${data.nickname}`,
+      `🎂 年齡：${age} 歲`,
+      `🚻 性別：${gender === "male" ? "男性" : "女性"}`,
+      data.height ? `📏 身高：${data.height} cm` : null,
+      data.weight ? `⚖️ 體重：${data.weight} kg` : null,
+      data.customSymptoms ? `💊 藥單/手術史：${data.customSymptoms}` : null,
+    ].filter(Boolean).join("\n");
 
-    if (bmiData) text += `\n📊 BMI：${bmiData.bmi}（${bmiData.category}）`;
-    if (waterData) text += `\n💧 每日喝水：${waterData.liters} 公升`;
+    const currentUrl = window.location.origin + `/report/${id}` + (refLine ? `?line=${encodeURIComponent(refLine)}` : "");
 
-    text += `\n\n當身體開始有好轉反應情況，請第一時間與您的推薦人討論用量增減。`;
+    // Build the share text
+    let text = `🌿 Putier 健康評估報告\n\n【🩺 評估項目總覽】\n${basicInfoText}\n\n📋 保健需求：\n${symptomList}\n\n✨ 預估好轉反應：\n${herxSummary || "（依個人體質而異）"}\n\n💊 每日建議：${reportData?.recommendedDosage || dosage.dailyCapsules} 顆\n📅 首套天數：${reportData?.firstSetDays || dosage.firstSetDays} 天\n\n💬 詳細評估報告請至：\n${currentUrl}\n\n🔗 立即添加專業顧問 LINE：\n${refLine || "請洽您的推薦人"}`;
 
-    // Safety truncation for extreme cases
+    // Safety truncation
     const MAX_TEXT_LENGTH = 1000;
     if (text.length > MAX_TEXT_LENGTH) {
       text = text.substring(0, MAX_TEXT_LENGTH - 3) + "...";
@@ -414,10 +422,18 @@ export default function Report() {
           </div>
         </Accordion>
 
-        <Button onClick={handleLineShare} className="w-full h-13 text-base font-bold rounded-xl shadow-lg" style={{ background: "#06C755", color: "white" }}>
-          <Share2 size={18} className="mr-2" />
-          LINE 分享報告
-        </Button>
+        {/* Share Button (Sticky Bottom) */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-20 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+          <div className="container max-w-md mx-auto">
+            <Button
+              onClick={handleLineShare}
+              className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl bg-[#22C55E] hover:bg-[#1ea34d] text-white border-b-4 border-[#168a3d] active:border-b-0 active:translate-y-1 transition-all"
+            >
+              <Share2 size={20} className="mr-2" />
+              點此將健康報告分享至 LINE
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
