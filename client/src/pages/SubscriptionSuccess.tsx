@@ -74,7 +74,10 @@ export default function SubscriptionSuccess() {
       </div>
 
       <Button
-        onClick={() => navigate("/")}
+        onClick={async () => {
+          await utils.auth.me.invalidate();
+          navigate("/");
+        }}
         className="w-full max-w-xs h-14 rounded-2xl text-lg font-bold shadow-lg"
         style={{ background: "#1B4965", color: "white" }}
       >

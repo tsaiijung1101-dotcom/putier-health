@@ -16,6 +16,7 @@ export default function Home() {
   const [showRecordsDialog, setShowRecordsDialog] = useState(false);
   const [showLogDialog, setShowLogDialog] = useState(false);
   const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
   const [lineIdInput, setLineIdInput] = useState("");
   const [logLineId, setLogLineId] = useState("");
   const [analysisData, setAnalysisData] = useState<any>(null);
@@ -210,13 +211,19 @@ export default function Home() {
       <div className="container pb-6">
         <div className="text-center text-xs text-gray-400">
           <p 
-            onContextMenu={(e) => {
-              e.preventDefault();
-              if (confirm("是否進入管理員後台？")) {
-                navigate("/admin");
+            onClick={() => {
+              const newCount = clickCount + 1;
+              setClickCount(newCount);
+              if (newCount >= 5) {
+                setClickCount(0);
+                if (confirm("偵測到管理員操作，是否進入後台？")) {
+                  navigate("/admin");
+                }
               }
+              // 3秒後重置點擊次數
+              setTimeout(() => setClickCount(0), 3000);
             }}
-            className="cursor-default select-none active:opacity-50 transition-opacity"
+            className="cursor-default select-none active:opacity-50 transition-opacity py-2"
           >
             Putier Health · {APP_VERSION}
           </p>
