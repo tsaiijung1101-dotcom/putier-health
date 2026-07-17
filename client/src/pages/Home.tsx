@@ -3,12 +3,13 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity, Crown, Calendar, Settings, User } from "lucide-react";
+import { ClipboardList, History, Leaf, Shield, Zap, Star, Activity, Crown, Calendar, Settings, User, Users } from "lucide-react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { APP_VERSION } from "@shared/version";
 import RecoveryLogForm from "@/components/assessment/RecoveryLogForm";
 import RecoveryAnalysisDialog from "@/components/assessment/RecoveryAnalysisDialog";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -179,8 +180,8 @@ export default function Home() {
               variant="outline"
               className="flex-1 h-12 text-base font-bold rounded-xl border-white/40 text-white bg-white/10 hover:bg-white/20"
             >
-              <Users size={18} className="mr-2" />
-              {leader ? "CRM 管理" : "領導人登入"}
+              <Activity size={18} className="mr-2" />
+              📊 查看健康紀錄
             </Button>
           </div>
           
