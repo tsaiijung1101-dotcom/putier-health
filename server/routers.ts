@@ -5,14 +5,15 @@ import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import {
   saveAssessment,
-  getAssessmentsByLineId,
+  getAssessmentsByLeaderLineUrl,
   getAssessmentById,
   getMedicationImagesByAssessmentId,
   saveMedicationImage,
   saveRecoveryLog,
   getRecoveryLogsByLineId,
-  getUserByOpenId,
-  updateUserSubscription,
+  getUserByLineUrl,
+  upsertUser,
+  toggleFavoriteAssessment,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -23,7 +24,7 @@ const assessmentRouter = router({
   create: publicProcedure
     .input(
       z.object({
-        lineId: z.string().optional(),
+        leaderLineUrl: z.string().optional(),
         nickname: z.string().min(1),
         birthdate: z.string(), // YYYY-MM-DD
         gender: z.enum(["male", "female"]),
@@ -38,29 +39,20 @@ const assessmentRouter = router({
           originalName: z.string(),
           mimeType: z.string(),
         })).optional(),
-        recommendedDosage: z.number().optional(),
-        firstSetDays: z.number().optional(),
-        setCount: z.number().optional(),
-        bmi: z.number().optional(),
-        dailyWater: z.number().optional(),
+        reportData: z.any(),
       })
     )
     .mutation(async ({ input }) => {
       const id = await saveAssessment({
-        lineId: input.lineId ?? null,
+        leaderLineUrl: input.leaderLineUrl ?? null,
         nickname: input.nickname,
-        birthdate: input.birthdate,
+        birthday: input.birthdate,
         gender: input.gender,
-        height: input.height ?? null,
-        weight: input.weight ?? null,
-        medications: input.medications ?? null,
-        surgeryHistory: input.surgeryHistory ?? null,
-        selectedSymptoms: input.selectedSymptoms,
-        recommendedDosage: input.recommendedDosage ?? null,
-        firstSetDays: input.firstSetDays ?? null,
-        setCount: input.setCount ?? 1,
-        bmi: input.bmi ?? null,
-        dailyWater: input.dailyWater ?? null,
+        height: input.height?.toString() ?? null,
+        weight: input.weight?.toString() ?? null,
+        customSymptoms: (input.medications || "") + " | " + (input.surgeryHistory || ""),
+        symptoms: input.selectedSymptoms,
+        reportData: input.reportData,
       });
       // Save medication images if any
       if (input.medicationImages && input.medicationImages.length > 0) {
@@ -97,10 +89,17 @@ const assessmentRouter = router({
       return { id };
     }),
 
-  getByLineId: publicProcedure
-    .input(z.object({ lineId: z.string().min(1) }))
+  getByLeader: publicProcedure
+    .input(z.object({ leaderLineUrl: z.string().min(1) }))
     .query(async ({ input }) => {
-      return getAssessmentsByLineId(input.lineId);
+      return getAssessmentsByLeaderLineUrl(input.leaderLineUrl);
+    }),
+
+  toggleFavorite: publicProcedure
+    .input(z.object({ id: z.number(), isFavorite: z.boolean() }))
+    .mutation(async ({ input }) => {
+      await toggleFavoriteAssessment(input.id, input.isFavorite);
+      return { success: true };
     }),
 
   getById: publicProcedure
@@ -117,17 +116,21 @@ const assessmentRouter = router({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(async ({ ctx }) => {
-      const user = ctx.user;
-      if (!user) return null;
-      const dbUser = await getUserByOpenId(user.openId);
-      return dbUser || user;
-    }),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
+    leaderLogin: publicProcedure
+      .input(z.object({ lineUrl: z.string().min(1), authCode: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        let user = await getUserByLineUrl(input.lineUrl);
+        if (!user) {
+          // 首次登入，自動註冊
+          await upsertUser({
+            lineUrl: input.lineUrl,
+            authCode: input.authCode,
+            status: input.authCode ? 'pro' : 'free',
+          });
+          user = await getUserByLineUrl(input.lineUrl);
+        }
+        return user;
+      }),
   }),
   assessment: assessmentRouter,
   recovery: router({

@@ -6,54 +6,45 @@ import {
   timestamp,
   varchar,
   json,
-  float,
+  decimal,
+  boolean,
+  datetime,
 } from "drizzle-orm/mysql-core";
 
+// 領導人註冊會員表
 export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  lineUrl: varchar("line_url", { length: 500 }).primaryKey(), // 連動的 LINE 好友網址
+  name: varchar("name", { length: 255 }),
+  authCode: varchar("auth_code", { length: 255 }), // 訂閱授權碼
+  status: varchar("status", { length: 50 }).default("free"),
+  expiredAt: datetime("expired_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-  subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).default("free").notNull(), // free, active, expired
-  subscriptionExpiresAt: timestamp("subscriptionExpiresAt"),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// 評估紀錄主表
+// 客戶評估與跟進紀錄表
 export const assessments = mysqlTable("assessments", {
   id: int("id").autoincrement().primaryKey(),
-  lineId: varchar("lineId", { length: 100 }),
-  nickname: varchar("nickname", { length: 100 }).notNull(),
-  birthdate: varchar("birthdate", { length: 20 }).notNull(), // YYYY-MM-DD
-  gender: mysqlEnum("gender", ["male", "female"]).notNull(),
-  height: float("height"), // cm, optional
-  weight: float("weight"), // kg, optional
-  medications: text("medications"), // 用藥情況文字
-  surgeryHistory: text("surgeryHistory"), // 手術史
-  // 勾選的症狀 JSON array of symptom IDs
-  selectedSymptoms: json("selectedSymptoms").$type<string[]>().notNull(),
-  // 報告計算結果快照
-  recommendedDosage: int("recommendedDosage"), // 建議每日顆數
-  firstSetDays: int("firstSetDays"), // 首套天數
-  setCount: int("setCount").default(1), // 套數
-  bmi: float("bmi"), // BMI 值
-  dailyWater: float("dailyWater"), // 每日喝水量 ml
+  nickname: varchar("nickname", { length: 255 }).notNull(), // 客戶姓名/暱稱
+  birthday: varchar("birthday", { length: 255 }).notNull(), // 出生年月日
+  gender: mysqlEnum("gender", ["male", "female"]).notNull(), // 性別
+  height: decimal("height", { precision: 5, scale: 1 }), // 身高
+  weight: decimal("weight", { precision: 5, scale: 1 }), // 體重
+  symptoms: json("symptoms").$type<string[]>().notNull(), // 勾選的病症標籤
+  customSymptoms: text("customSymptoms"), // 自填症狀/手術史
+  reportData: json("reportData").notNull(), // 完整報告數據
+  leaderLineUrl: varchar("leader_line_url", { length: 500 }), // 領導人的 LINE 網址 (數據隔離)
+  isFavorite: boolean("is_favorite").default(false), // 星號最愛跟進標記
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Assessment = typeof assessments.$inferSelect;
 export type InsertAssessment = typeof assessments.$inferInsert;
 
-// 用藥圖片表
+// 用藥圖片表 (保留原有的 S3 圖片關聯，雖然規格沒提到，但為了功能完整性建議保留或視需求調整)
 export const medicationImages = mysqlTable("medication_images", {
   id: int("id").autoincrement().primaryKey(),
   assessmentId: int("assessmentId").notNull(),
@@ -64,19 +55,13 @@ export const medicationImages = mysqlTable("medication_images", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type MedicationImage = typeof medicationImages.$inferSelect;
-export type InsertMedicationImage = typeof medicationImages.$inferInsert;
-
-// 修復日誌表 (大數據收集)
+// 修復日誌表 (保留原有的日誌功能)
 export const recoveryLogs = mysqlTable("recovery_logs", {
   id: int("id").autoincrement().primaryKey(),
   lineId: varchar("lineId", { length: 100 }).notNull(),
-  dosage: int("dosage").notNull(), // 當日服用量
-  reactions: json("reactions").$type<string[]>().notNull(), // 身體反應勾選
-  notes: text("notes"), // 額外描述
-  reportDate: varchar("reportDate", { length: 20 }).notNull(), // 回報日期 YYYY-MM-DD
+  dosage: int("dosage").notNull(),
+  reactions: json("reactions").$type<string[]>().notNull(),
+  notes: text("notes"),
+  reportDate: varchar("reportDate", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
-
-export type RecoveryLog = typeof recoveryLogs.$inferSelect;
-export type InsertRecoveryLog = typeof recoveryLogs.$inferInsert;

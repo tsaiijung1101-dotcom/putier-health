@@ -20,6 +20,39 @@ export default function Home() {
   const [lineIdInput, setLineIdInput] = useState("");
   const [logLineId, setLogLineId] = useState("");
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [showLeaderLogin, setShowLeaderLogin] = useState(false);
+  const [leaderLineUrl, setLeaderLineUrl] = useState("");
+  const [authCode, setAuthCode] = useState("");
+
+  const { state, setLeader } = useAssessment();
+  const { leader } = state;
+
+  const loginMutation = trpc.auth.leaderLogin.useMutation({
+    onSuccess: (user) => {
+      if (user) {
+        setLeader({
+          lineUrl: user.lineUrl,
+          name: user.name || "領導人",
+          status: user.status || "free",
+          expiredAt: user.expiredAt || null
+        });
+        setShowLeaderLogin(false);
+        toast.success("領導人登入成功！");
+        navigate("/crm");
+      }
+    },
+    onError: () => {
+      toast.error("登入失敗，請檢查資訊");
+    }
+  });
+
+  const handleLeaderLogin = () => {
+    if (!leaderLineUrl) {
+      toast.error("請輸入 LINE 網址");
+      return;
+    }
+    loginMutation.mutate({ lineUrl: leaderLineUrl, authCode });
+  };
 
   const analysisQuery = trpc.recovery.getAnalysis.useQuery(
     { lineId: logLineId },
@@ -114,12 +147,12 @@ export default function Home() {
               開始評估
             </Button>
             <Button
-              onClick={() => setShowRecordsDialog(true)}
+              onClick={() => leader ? navigate("/crm") : setShowLeaderLogin(true)}
               variant="outline"
               className="flex-1 h-12 text-base font-bold rounded-xl border-white/40 text-white bg-white/10 hover:bg-white/20"
             >
-              <History size={18} className="mr-2" />
-              查看紀錄
+              <Users size={18} className="mr-2" />
+              {leader ? "CRM 管理" : "領導人登入"}
             </Button>
           </div>
           
@@ -315,6 +348,43 @@ export default function Home() {
         onOpenChange={setShowAnalysisDialog}
         analysis={analysisData}
       />
+
+      {/* Leader Login Dialog */}
+      <Dialog open={showLeaderLogin} onOpenChange={setShowLeaderLogin}>
+        <DialogContent className="mx-4 rounded-2xl max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B4965]">領導人登入系統</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500">LINE 個人好友網址</label>
+              <Input
+                placeholder="https://line.me/ti/p/..."
+                value={leaderLineUrl}
+                onChange={e => setLeaderLineUrl(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500">訂閱授權碼 (選填)</label>
+              <Input
+                placeholder="輸入授權碼以啟用 Pro 功能"
+                value={authCode}
+                onChange={e => setAuthCode(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <Button
+              onClick={handleLeaderLogin}
+              disabled={loginMutation.isPending}
+              className="w-full h-11 rounded-xl font-bold"
+              style={{ background: "#1B4965", color: "white" }}
+            >
+              {loginMutation.isPending ? "登入中..." : "確認登入"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

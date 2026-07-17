@@ -173,8 +173,19 @@ export default function Step3Report() {
 
   const saveReport = useCallback(() => {
     if (saved) return;
+    
+    // 將完整的報告數據打包成 JSON
+    const reportData = {
+      recommendedDosage: dosage.dailyCapsules,
+      firstSetDays: dosage.firstSetDays,
+      setCount,
+      bmi: bmiData?.bmi ?? null,
+      dailyWater: waterData?.ml ?? null,
+      daysData
+    };
+
     createAssessment.mutate({
-      lineId: basicInfo.lineId || undefined,
+      leaderLineUrl: state.leader?.lineUrl || undefined,
       nickname: basicInfo.nickname,
       birthdate: basicInfo.birthdate,
       gender,
@@ -186,13 +197,9 @@ export default function Step3Report() {
       medicationImages: basicInfo.medicationImages.length > 0
         ? basicInfo.medicationImages
         : undefined,
-      recommendedDosage: dosage.dailyCapsules,
-      firstSetDays: dosage.firstSetDays,
-      setCount,
-      bmi: bmiData?.bmi ?? undefined,
-      dailyWater: waterData?.ml ?? undefined,
+      reportData,
     });
-  }, [saved, dosage, basicInfo, selectedSymptoms, height, weight, bmiData, waterData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [saved, dosage, basicInfo, selectedSymptoms, height, weight, bmiData, waterData, state.leader, setCount, daysData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     saveReport();

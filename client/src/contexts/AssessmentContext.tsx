@@ -21,11 +21,19 @@ export interface BasicInfo {
   medicationImages: MedicationImage[];
 }
 
+export interface LeaderInfo {
+  lineUrl: string;
+  name: string;
+  status: string;
+  expiredAt: string | null;
+}
+
 export interface AssessmentState {
   step: number;
   basicInfo: BasicInfo;
   selectedSymptoms: string[];
   savedAssessmentId: number | null;
+  leader: LeaderInfo | null;
 }
 
 interface AssessmentContextType {
@@ -35,6 +43,8 @@ interface AssessmentContextType {
   setSelectedSymptoms: (symptoms: string[]) => void;
   toggleSymptom: (symptomId: string) => void;
   setSavedAssessmentId: (id: number) => void;
+  setLeader: (leader: LeaderInfo | null) => void;
+  logoutLeader: () => void;
   resetAssessment: () => void;
 }
 
@@ -55,6 +65,7 @@ const defaultState: AssessmentState = {
   basicInfo: defaultBasicInfo,
   selectedSymptoms: [],
   savedAssessmentId: null,
+  leader: JSON.parse(localStorage.getItem("putier_leader") || "null"),
 };
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
@@ -81,7 +92,20 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
   const setSavedAssessmentId = (id: number) =>
     setState(s => ({ ...s, savedAssessmentId: id }));
 
-  const resetAssessment = () => setState(defaultState);
+  const setLeader = (leader: LeaderInfo | null) => {
+    setState(s => ({ ...s, leader }));
+    if (leader) {
+      localStorage.setItem("putier_leader", JSON.stringify(leader));
+    } else {
+      localStorage.removeItem("putier_leader");
+    }
+  };
+
+  const logoutLeader = () => {
+    setLeader(null);
+  };
+
+  const resetAssessment = () => setState(s => ({ ...defaultState, leader: s.leader }));
 
   return (
     <AssessmentContext.Provider
@@ -92,6 +116,8 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         setSelectedSymptoms,
         toggleSymptom,
         setSavedAssessmentId,
+        setLeader,
+        logoutLeader,
         resetAssessment,
       }}
     >

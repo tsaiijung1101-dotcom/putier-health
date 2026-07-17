@@ -11,6 +11,7 @@ import Report from "./pages/Report";
 import Records from "./pages/Records";
 import Subscription from "./pages/Subscription";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import CRM from "./pages/CRM";
 
 function Router() {
   return (
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/assessment" component={Assessment} />
       <Route path="/report/:id" component={Report} />
       <Route path="/records" component={Records} />
+      <Route path="/crm" component={CRM} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/subscription/success" component={SubscriptionSuccess} />
       <Route path="/404" component={NotFound} />

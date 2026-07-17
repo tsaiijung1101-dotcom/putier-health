@@ -111,11 +111,12 @@ export default function Report() {
     );
   }
 
-  const age = calcAge(data.birthdate);
+  const age = calcAge(data.birthday);
   const gender = data.gender as "male" | "female";
-  const selectedSymptoms = data.selectedSymptoms as string[];
-  const weight = data.weight ?? undefined;
-  const height = data.height ?? undefined;
+  const selectedSymptoms = data.symptoms as string[];
+  const weight = data.weight ? parseFloat(data.weight as string) : undefined;
+  const height = data.height ? parseFloat(data.height as string) : undefined;
+  const reportData = data.reportData as any;
 
   const dosage = calculateDosage(age, gender, selectedSymptoms, weight, setCount);
   const bmiData = weight && height ? calculateBMI(weight, height) : null;
@@ -221,11 +222,11 @@ export default function Report() {
               <div className="text-xs text-gray-500">性別</div>
               <div className="font-bold text-gray-800 mt-0.5">{gender === "male" ? "♂ 男性" : "♀ 女性"}</div>
             </div>
-            {bmiData && (
+            {reportData?.bmi && (
               <div className="bg-gray-50 rounded-xl p-3">
                 <div className="text-xs text-gray-500">BMI</div>
                 <div className="font-bold text-gray-800 mt-0.5">
-                  {bmiData.bmi} <span className="text-xs font-normal text-gray-500">({bmiData.category})</span>
+                  {reportData.bmi}
                 </div>
               </div>
             )}
@@ -254,7 +255,7 @@ export default function Report() {
           </div>
           <div className="rounded-2xl p-4 mb-3 text-center" style={{ background: "linear-gradient(135deg, #1B4965, #2d6a8f)" }}>
             <div className="text-white/70 text-xs mb-1">建議每日服用</div>
-            <div className="text-white text-4xl font-bold">{dosage.dailyCapsules}</div>
+            <div className="text-white text-4xl font-bold">{reportData?.recommendedDosage || dosage.dailyCapsules}</div>
             <div className="text-white/70 text-sm">顆 / 天</div>
           </div>
           <div className="bg-gray-50 rounded-xl p-3 mb-3">
@@ -278,12 +279,12 @@ export default function Report() {
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-blue-50 rounded-xl p-3 text-center">
               <div className="text-xs text-blue-600 font-medium">首套天數</div>
-              <div className="text-2xl font-bold text-[#1B4965] mt-1">{dosage.firstSetDays}</div>
+              <div className="text-2xl font-bold text-[#1B4965] mt-1">{reportData?.firstSetDays || dosage.firstSetDays}</div>
               <div className="text-xs text-blue-600">天</div>
             </div>
             <div className="bg-green-50 rounded-xl p-3 text-center">
               <div className="text-xs text-green-600 font-medium">總顆數</div>
-              <div className="text-2xl font-bold text-green-700 mt-1">{setCount * 60}</div>
+              <div className="text-2xl font-bold text-green-700 mt-1">{reportData?.setCount ? reportData.setCount * 420 : setCount * 420}</div>
               <div className="text-xs text-green-600">顆</div>
             </div>
           </div>
