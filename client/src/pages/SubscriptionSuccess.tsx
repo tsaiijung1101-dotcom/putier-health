@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, PartyPopper, ArrowRight, Shield, Zap, ClipboardList, Activity } from "lucide-react";
@@ -9,19 +9,32 @@ export default function SubscriptionSuccess() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const activateMutation = trpc.subscription.activateMock.useMutation();
+  const [clickCount, setClickCount] = useState(0);
+  const [isActivated, setIsActivated] = useState(false);
 
-  useEffect(() => {
-    const activate = async () => {
-      try {
-        await activateMutation.mutateAsync();
-        utils.auth.me.invalidate();
-        toast.success("訂閱成功！歡迎加入專業版。");
-      } catch (error) {
-        console.error("Activation error:", error);
+  const handleTextClick = async () => {
+    const nextCount = clickCount + 1;
+    setClickCount(nextCount);
+
+    if (nextCount === 5) {
+      setClickCount(0);
+      const code = window.prompt("🔑 請輸入專業版啟用專碼：");
+      if (code === "pro123") {
+        try {
+          await activateMutation.mutateAsync();
+          await utils.auth.me.refetch();
+          setIsActivated(true);
+          toast.success("🎉 專碼驗證成功！已成功開通付費專業版權限。");
+        } catch (error) {
+          toast.error("權限開通失敗，請重試！");
+        }
+      } else if (code !== null) {
+        toast.error("❌ 專碼錯誤，無法開啟專業版權限！");
       }
-    };
-    activate();
-  }, []);
+    } else if (nextCount >= 2) {
+      toast.info(`再點擊 ${5 - nextCount} 次即可輸入啟用專碼`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-8 text-center">
@@ -29,12 +42,18 @@ export default function SubscriptionSuccess() {
         <CheckCircle2 size={48} className="text-[#22C55E]" />
       </div>
       
-      <h1 className="text-2xl font-black text-gray-800 mb-2 flex items-center gap-2">
+      <h1 
+        onClick={handleTextClick}
+        className="text-2xl font-black text-gray-800 mb-2 flex items-center gap-2 cursor-pointer select-none active:opacity-70"
+        title="連續點擊 5 次以啟用測試專碼"
+      >
         支付成功！ <PartyPopper className="text-yellow-500" />
       </h1>
       
-      <p className="text-gray-500 text-sm mb-12 leading-relaxed">
-        感謝您訂閱 Putier Health 專業版。您的帳戶權限已自動開啟，現在您可以享受所有專屬功能。
+      <p className="text-gray-500 text-sm mb-12 leading-relaxed max-w-sm">
+        {isActivated 
+          ? "🎉 您的帳戶專業版權限已成功開啟，現在您可以享受所有專屬大數據管理功能。"
+          : "感謝您訂閱 Putier Health 專業版。請連續點擊上方「支付成功！」文字 5 次並輸入專碼「pro123」以啟用測試帳戶。"}
       </p>
 
       <div className="w-full max-w-sm bg-blue-50/50 rounded-3xl p-6 mb-8 text-left border border-blue-100">
@@ -75,10 +94,9 @@ export default function SubscriptionSuccess() {
 
       <Button
         onClick={async () => {
-          // 強制刷新緩存並等待一下，確保後端 DB 更新已完成
           await utils.auth.me.refetch();
           await new Promise(resolve => setTimeout(resolve, 500));
-          window.location.href = "/"; // 使用強制重整回到首頁，確保狀態完全清空
+          window.location.href = "/";
         }}
         className="w-full max-w-xs h-14 rounded-2xl text-lg font-bold shadow-lg"
         style={{ background: "#1B4965", color: "white" }}
