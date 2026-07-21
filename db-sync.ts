@@ -21,9 +21,16 @@ async function sync() {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS users (
       line_url VARCHAR(500) PRIMARY KEY,
+      openId VARCHAR(255),
       name VARCHAR(255),
       auth_code VARCHAR(255),
       status VARCHAR(50) DEFAULT 'free',
+      subscriptionStatus VARCHAR(50),
+      subscriptionExpiresAt DATETIME,
+      stripeCustomerId VARCHAR(255),
+      loginMethod VARCHAR(64),
+      role VARCHAR(50) DEFAULT 'user' NOT NULL,
+      lastSignedIn TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
       expired_at DATETIME,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -96,6 +103,35 @@ async function sync() {
   // 檢查並為 users 資料表補上新增的欄位
   const [userCols] = await connection.query("SHOW COLUMNS FROM users");
   const userColNames = (userCols as any[]).map(c => c.Field);
+
+  if (!userColNames.includes("openId")) {
+    console.log("Migrating users table: adding openId");
+    await connection.query("ALTER TABLE users ADD COLUMN openId VARCHAR(255)");
+  }
+  if (!userColNames.includes("subscriptionStatus")) {
+    console.log("Migrating users table: adding subscriptionStatus");
+    await connection.query("ALTER TABLE users ADD COLUMN subscriptionStatus VARCHAR(50)");
+  }
+  if (!userColNames.includes("subscriptionExpiresAt")) {
+    console.log("Migrating users table: adding subscriptionExpiresAt");
+    await connection.query("ALTER TABLE users ADD COLUMN subscriptionExpiresAt DATETIME");
+  }
+  if (!userColNames.includes("stripeCustomerId")) {
+    console.log("Migrating users table: adding stripeCustomerId");
+    await connection.query("ALTER TABLE users ADD COLUMN stripeCustomerId VARCHAR(255)");
+  }
+  if (!userColNames.includes("loginMethod")) {
+    console.log("Migrating users table: adding loginMethod");
+    await connection.query("ALTER TABLE users ADD COLUMN loginMethod VARCHAR(64)");
+  }
+  if (!userColNames.includes("role")) {
+    console.log("Migrating users table: adding role");
+    await connection.query("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user' NOT NULL");
+  }
+  if (!userColNames.includes("lastSignedIn")) {
+    console.log("Migrating users table: adding lastSignedIn");
+    await connection.query("ALTER TABLE users ADD COLUMN lastSignedIn TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL");
+  }
   
   if (!userColNames.includes("full_name")) {
     console.log("Migrating users table: adding full_name");
