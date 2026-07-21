@@ -300,7 +300,7 @@ class SDKServer {
           email: userInfo.email ?? null,
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
-        });
+        } as any);
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
         console.error("[Auth] Failed to sync user from OAuth:", error);
@@ -315,7 +315,7 @@ class SDKServer {
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: signedInAt,
-    });
+    } as any);
 
     return user;
   }
@@ -345,7 +345,7 @@ function buildCronUser(
     lastSignedIn: now,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
-  } as AuthenticatedUser;
+  } as any as AuthenticatedUser;
 }
 
 export const sdk = new SDKServer();

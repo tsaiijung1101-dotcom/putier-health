@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,28 @@ import {
   Pill,
   Scissors,
   Hash,
+  Check,
+  Shield,
 } from "lucide-react";
 
 export default function Step1BasicInfo() {
   const { state, updateBasicInfo, setStep } = useAssessment();
   const { basicInfo } = state;
   const [uploading, setUploading] = useState(false);
+  const [agreedDisclaimer, setAgreedDisclaimer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    // 檢查 URL 參數
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlLeaderId = searchParams.get('leader_id') || searchParams.get('ref');
+    if (urlLeaderId) {
+      updateBasicInfo({ leaderId: urlLeaderId });
+      localStorage.setItem('putier_ref_leader_id', urlLeaderId);
+    }
+  }, []);
 
   const handleNext = () => {
     if (!basicInfo.nickname.trim()) {
@@ -41,6 +54,10 @@ export default function Step1BasicInfo() {
     }
     if (!basicInfo.gender) {
       toast.error("請選擇性別");
+      return;
+    }
+    if (!agreedDisclaimer) {
+      toast.error("您必須同意免責聲明才能進行評估");
       return;
     }
     setStep(2);
@@ -92,6 +109,24 @@ export default function Step1BasicInfo() {
           className="rounded-xl"
         />
         <p className="text-xs text-gray-400 mt-1.5">填寫後可透過 LINE ID 查詢歷史評估紀錄</p>
+      </div>
+
+      {/* 領導人 ID */}
+      <div className="putier-card">
+        <div className="flex items-center gap-2 mb-3">
+          <User size={16} className="text-[#1B4965]" />
+          <Label className="text-sm font-bold text-[#1B4965]">領導人 ID（選填）</Label>
+        </div>
+        <Input
+          placeholder="請輸入或帶入領導人 ID"
+          value={basicInfo.leaderId || ""}
+          onChange={e => {
+            updateBasicInfo({ leaderId: e.target.value });
+            localStorage.setItem('putier_ref_leader_id', e.target.value);
+          }}
+          className="rounded-xl"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">若您是由特定推薦人推薦，填寫後可為您對接專屬服務</p>
       </div>
 
       {/* 暱稱 */}
@@ -274,11 +309,40 @@ export default function Step1BasicInfo() {
         />
       </div>
 
+      {/* 免責聲明 */}
+      <div className="putier-card border border-amber-200 bg-amber-50/50">
+        <button
+          onClick={() => setAgreedDisclaimer(prev => !prev)}
+          className="flex items-start gap-3 text-left w-full cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+        >
+          <div
+            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+              agreedDisclaimer
+                ? "bg-[#1B4965] border-[#1B4965]"
+                : "border-amber-300 bg-white"
+            }`}
+          >
+            {agreedDisclaimer && <Check size={12} className="text-white" />}
+          </div>
+          <div className="flex-1">
+            <span className="text-xs font-bold text-amber-900 block mb-1">健康評估免責聲明 <span className="text-red-500">*</span></span>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              本系統評估結果僅供健康管理與營養補充參考，不具醫療診斷或處方效益。如有急性不適請尋求專業醫師協助。
+            </p>
+          </div>
+        </button>
+      </div>
+
       {/* Next Button */}
       <Button
         onClick={handleNext}
-        className="w-full h-13 text-base font-bold rounded-xl shadow-lg"
-        style={{ background: "#1B4965", color: "white" }}
+        disabled={!agreedDisclaimer}
+        className="w-full h-13 text-base font-bold rounded-xl shadow-lg transition-all"
+        style={{
+          background: agreedDisclaimer ? "#1B4965" : "#94A3B8",
+          color: "white",
+          cursor: agreedDisclaimer ? "pointer" : "not-allowed"
+        }}
       >
         下一步：症狀勾選
         <ChevronRight size={18} className="ml-1" />

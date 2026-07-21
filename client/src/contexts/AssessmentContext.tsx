@@ -19,6 +19,7 @@ export interface BasicInfo {
   medications: string;
   surgeryHistory: string;
   medicationImages: MedicationImage[];
+  leaderId?: string; // 領導人 ID
 }
 
 export interface LeaderInfo {
@@ -26,6 +27,11 @@ export interface LeaderInfo {
   name: string;
   status: string;
   expiredAt: string | null;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  customLeaderId?: string;
+  lineId?: string;
 }
 
 export interface AssessmentState {
@@ -58,6 +64,7 @@ const defaultBasicInfo: BasicInfo = {
   medications: "",
   surgeryHistory: "",
   medicationImages: [],
+  leaderId: localStorage.getItem("putier_ref_leader_id") || "",
 };
 
 const defaultState: AssessmentState = {

@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   saveAssessment,
   getAssessmentsByLeaderLineUrl,
+  getAssessmentsByLineId,
   getAssessmentById,
   getMedicationImagesByAssessmentId,
   saveMedicationImage,
@@ -16,6 +17,9 @@ import {
   updateUserSubscription,
   getUserByOpenId,
   deleteAssessment,
+  getUserByCustomLeaderId,
+  saveClientProgressReport,
+  getClientProgressReportsByLeaderId,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -27,6 +31,8 @@ const assessmentRouter = router({
     .input(
       z.object({
         leaderLineUrl: z.string().optional(),
+        leaderId: z.string().optional(),
+        lineId: z.string().optional(),
         nickname: z.string().min(1),
         birthdate: z.string(), // YYYY-MM-DD
         gender: z.enum(["male", "female"]),
@@ -45,8 +51,18 @@ const assessmentRouter = router({
       })
     )
     .mutation(async ({ input }) => {
+      let resolvedLeaderLineUrl = input.leaderLineUrl ?? null;
+      if (input.leaderId) {
+        const leader = await getUserByCustomLeaderId(input.leaderId);
+        if (leader) {
+          resolvedLeaderLineUrl = leader.lineUrl;
+        }
+      }
+
       const id = await saveAssessment({
-        leaderLineUrl: input.leaderLineUrl ?? null,
+        leaderLineUrl: resolvedLeaderLineUrl,
+        leaderId: input.leaderId ?? null,
+        lineId: input.lineId ?? null,
         nickname: input.nickname,
         birthday: input.birthdate,
         gender: input.gender,
@@ -71,24 +87,34 @@ const assessmentRouter = router({
         );
       }
 
-      // 同步到 Google Sheets
-      await appendRow('評估報告!A:M', [
-        new Date().toLocaleString('zh-TW'),
-        input.lineId || '匿名',
-        input.nickname,
-        input.birthdate,
-        input.gender === 'male' ? '男' : '女',
-        input.bmi || 'N/A',
-        input.dailyWater || 'N/A',
-        input.selectedSymptoms.join(', '),
-        input.recommendedDosage || 'N/A',
-        input.firstSetDays || 'N/A',
-        input.medications || '無',
-        input.surgeryHistory || '無',
-        `ID: ${id}`
-      ]);
+      // 同步到 Google Sheets (加上容錯處理，讀取 reportData 內部欄位)
+      try {
+        await appendRow('評估報告!A:M', [
+          new Date().toLocaleString('zh-TW'),
+          input.lineId || '匿名',
+          input.nickname,
+          input.birthdate,
+          input.gender === 'male' ? '男' : '女',
+          input.reportData?.bmi || 'N/A',
+          input.reportData?.dailyWater || 'N/A',
+          input.selectedSymptoms.join(', '),
+          input.reportData?.recommendedDosage || 'N/A',
+          input.reportData?.firstSetDays || 'N/A',
+          input.medications || '無',
+          input.surgeryHistory || '無',
+          `ID: ${id}`
+        ]);
+      } catch (error) {
+        console.error("[Google Sheets Sync Error] 評估報告同步失敗:", error);
+      }
 
       return { id };
+    }),
+
+  getByLineId: publicProcedure
+    .input(z.object({ lineId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      return getAssessmentsByLineId(input.lineId);
     }),
 
   getByLeader: publicProcedure
@@ -127,23 +153,68 @@ export const appRouter = router({
   auth: router({
     me: publicProcedure.query(async ({ ctx }) => {
       const user = ctx.user;
-      if (!user) return null;
+      if (!user || !user.openId) return null;
       const dbUser = await getUserByOpenId(user.openId);
       return dbUser || user;
     }),
     leaderLogin: publicProcedure
-      .input(z.object({ lineUrl: z.string().min(1), authCode: z.string().optional() }))
+      .input(z.object({ lineUrl: z.string().min(1) }))
       .mutation(async ({ input }) => {
-        let user = await getUserByLineUrl(input.lineUrl);
-        if (!user) {
-          // 首次登入，自動註冊
-          await upsertUser({
-            lineUrl: input.lineUrl,
-            authCode: input.authCode,
-            status: input.authCode ? 'pro' : 'free',
-          });
-          user = await getUserByLineUrl(input.lineUrl);
+        const user = await getUserByLineUrl(input.lineUrl);
+        return user || null;
+      }),
+    leaderRegister: publicProcedure
+      .input(
+        z.object({
+          lineUrl: z.string().min(1),
+          fullName: z.string().min(1),
+          phone: z.string().min(1),
+          email: z.string().email(),
+          customLeaderId: z.string().min(1),
+          lineId: z.string().min(1),
+          authCode: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const existingById = await getUserByCustomLeaderId(input.customLeaderId);
+        if (existingById) {
+          throw new Error("此自訂領導人 ID 已被他人使用");
         }
+
+        const existingByUrl = await getUserByLineUrl(input.lineUrl);
+        if (existingByUrl) {
+          throw new Error("此 LINE 個人好友網址已被註冊");
+        }
+
+        await upsertUser({
+          lineUrl: input.lineUrl,
+          name: input.fullName,
+          authCode: input.authCode,
+          status: input.authCode ? 'pro' : 'free',
+          fullName: input.fullName,
+          phone: input.phone,
+          email: input.email,
+          customLeaderId: input.customLeaderId,
+          lineId: input.lineId,
+        });
+
+        const user = await getUserByLineUrl(input.lineUrl);
+
+        // 同步領導人註冊資訊到 Google Sheets (加上容錯處理)
+        try {
+          await appendRow('領導人名冊!A:G', [
+            new Date().toLocaleString('zh-TW'),
+            input.fullName,
+            input.phone,
+            input.email,
+            input.customLeaderId,
+            input.lineId,
+            input.lineUrl
+          ]);
+        } catch (error) {
+          console.error("[Google Sheets Sync Error] 領導人註冊同步失敗:", error);
+        }
+
         return user;
       }),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -173,15 +244,19 @@ export const appRouter = router({
           reportDate: input.reportDate,
         });
 
-        // 同步到 Google Sheets
-        await appendRow('修復日誌!A:F', [
-          new Date().toLocaleString('zh-TW'),
-          input.lineId,
-          input.dosage,
-          input.reactions.join(', '),
-          input.notes || '無',
-          input.reportDate
-        ]);
+        // 同步到 Google Sheets (加上容錯處理)
+        try {
+          await appendRow('修復日誌!A:F', [
+            new Date().toLocaleString('zh-TW'),
+            input.lineId,
+            input.dosage,
+            input.reactions.join(', '),
+            input.notes || '無',
+            input.reportDate
+          ]);
+        } catch (error) {
+          console.error("[Google Sheets Sync Error] 修復日誌同步失敗:", error);
+        }
 
         return { id };
       }),
@@ -204,8 +279,8 @@ export const appRouter = router({
         const trends: string[] = [];
 
         const reactionCounts: Record<string, number> = {};
-        recentLogs.forEach(log => {
-          (log.reactions as string[]).forEach(r => {
+        recentLogs.forEach((log: any) => {
+          (log.reactions as string[]).forEach((r: any) => {
             reactionCounts[r] = (reactionCounts[r] || 0) + 1;
           });
         });
@@ -228,12 +303,12 @@ export const appRouter = router({
   subscription: router({
     createSession: publicProcedure.mutation(async ({ ctx }) => {
       const user = ctx.user;
-      if (!user) throw new Error("Unauthorized");
+      if (!user || !user.openId) throw new Error("Unauthorized");
       return createCheckoutSession(user.openId, user.email || undefined);
     }),
     activateMock: publicProcedure.mutation(async ({ ctx }) => {
       const user = ctx.user;
-      if (!user) throw new Error("Unauthorized");
+      if (!user || !user.openId) throw new Error("Unauthorized");
       
       const expiresAt = new Date();
       expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -246,6 +321,52 @@ export const appRouter = router({
       
       return { success: true };
     }),
+  }),
+  clientProgress: router({
+    submitReport: publicProcedure
+      .input(z.object({
+        leaderId: z.string().min(1),
+        clientId: z.string().min(1),
+        dosage: z.number(),
+        meals: z.number(),
+        consecutiveDays: z.number(),
+        reactions: z.array(z.string()),
+        notes: z.string().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const id = await saveClientProgressReport({
+          leaderId: input.leaderId,
+          clientId: input.clientId,
+          dosage: input.dosage,
+          meals: input.meals,
+          consecutiveDays: input.consecutiveDays,
+          reactions: input.reactions,
+          notes: input.notes ?? null,
+        });
+
+        try {
+          await appendRow('客戶每日追蹤!A:H', [
+            new Date().toLocaleString('zh-TW'),
+            input.leaderId,
+            input.clientId,
+            input.dosage.toString(),
+            input.meals.toString(),
+            input.consecutiveDays.toString(),
+            input.reactions.join(', '),
+            input.notes ?? ''
+          ]);
+        } catch (error) {
+          console.error("[Google Sheets Sync Error] 客戶追蹤回報同步失敗:", error);
+        }
+
+        return { id };
+      }),
+    
+    listByLeader: publicProcedure
+      .input(z.object({ leaderId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return getClientProgressReportsByLeaderId(input.leaderId);
+      }),
   }),
 });
 

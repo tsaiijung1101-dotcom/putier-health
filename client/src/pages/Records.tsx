@@ -153,7 +153,7 @@ export default function Records() {
               <div className="text-xs text-gray-500">LINE ID: {searchLineId}</div>
             </div>
 
-            {data.map((record) => {
+            {data.map((record: any) => {
               const age = calcAge(record.birthdate);
               const selectedSymptoms = record.selectedSymptoms as string[];
               const createdDate = new Date(record.createdAt).toLocaleDateString("zh-TW", {
@@ -249,7 +249,7 @@ export default function Records() {
               修復日誌 ({logsData.length})
             </div>
             
-            {logsData.map((log) => (
+            {logsData.map((log: any) => (
               <div key={log.id} className="putier-card border-l-4 border-l-[#22C55E]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">

@@ -26,7 +26,12 @@ async function sync() {
       status VARCHAR(50) DEFAULT 'free',
       expired_at DATETIME,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      full_name VARCHAR(255),
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      custom_leader_id VARCHAR(255),
+      line_id VARCHAR(255)
     )
   `);
 
@@ -43,7 +48,8 @@ async function sync() {
       reportData JSON NOT NULL,
       leader_line_url VARCHAR(500),
       is_favorite BOOLEAN DEFAULT FALSE,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      leader_id VARCHAR(255)
     )
   `);
 
@@ -70,6 +76,65 @@ async function sync() {
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS client_progress_reports (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      leader_id VARCHAR(255) NOT NULL,
+      client_id VARCHAR(255) NOT NULL,
+      dosage INT NOT NULL,
+      meals INT NOT NULL,
+      consecutive_days INT NOT NULL,
+      reactions JSON NOT NULL,
+      notes TEXT,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  console.log("Checking columns and migrating existing tables...");
+
+  // 檢查並為 users 資料表補上新增的欄位
+  const [userCols] = await connection.query("SHOW COLUMNS FROM users");
+  const userColNames = (userCols as any[]).map(c => c.Field);
+  
+  if (!userColNames.includes("full_name")) {
+    console.log("Migrating users table: adding full_name");
+    await connection.query("ALTER TABLE users ADD COLUMN full_name VARCHAR(255)");
+  }
+  if (!userColNames.includes("phone")) {
+    console.log("Migrating users table: adding phone");
+    await connection.query("ALTER TABLE users ADD COLUMN phone VARCHAR(50)");
+  }
+  if (!userColNames.includes("email")) {
+    console.log("Migrating users table: adding email");
+    await connection.query("ALTER TABLE users ADD COLUMN email VARCHAR(255)");
+  }
+  if (!userColNames.includes("custom_leader_id")) {
+    console.log("Migrating users table: adding custom_leader_id");
+    await connection.query("ALTER TABLE users ADD COLUMN custom_leader_id VARCHAR(255)");
+    try {
+      await connection.query("ALTER TABLE users ADD UNIQUE KEY uk_custom_leader_id (custom_leader_id)");
+    } catch (e) {
+      console.warn("Could not create unique key on custom_leader_id, it might already exist or table has duplicate values:", e);
+    }
+  }
+  if (!userColNames.includes("line_id")) {
+    console.log("Migrating users table: adding line_id");
+    await connection.query("ALTER TABLE users ADD COLUMN line_id VARCHAR(255)");
+  }
+
+  // 檢查並為 assessments 資料表補上 leader_id 與 line_id 欄位
+  const [assessmentCols] = await connection.query("SHOW COLUMNS FROM assessments");
+  const assessmentColNames = (assessmentCols as any[]).map(c => c.Field);
+
+  if (!assessmentColNames.includes("leader_id")) {
+    console.log("Migrating assessments table: adding leader_id");
+    await connection.query("ALTER TABLE assessments ADD COLUMN leader_id VARCHAR(255)");
+  }
+  if (!assessmentColNames.includes("line_id")) {
+    console.log("Migrating assessments table: adding line_id");
+    await connection.query("ALTER TABLE assessments ADD COLUMN line_id VARCHAR(255)");
+  }
 
   console.log("Database synced successfully!");
   await connection.end();

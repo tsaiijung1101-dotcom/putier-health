@@ -1,10 +1,17 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, assessments, medicationImages, InsertAssessment, recoveryLogs, InsertRecoveryLog, User } from "../drizzle/schema";
+import { InsertUser, users, assessments, medicationImages, InsertAssessment, recoveryLogs, InsertRecoveryLog, User, clientProgressReports, InsertClientProgressReport, ClientProgressReport } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: any = null;
+
+// Global in-memory fallback state to persist data across requests when MySQL is unavailable
+const memUsers = new Map<string, any>();
+const memAssessments: any[] = [];
+const memMedicationImages: any[] = [];
+const memRecoveryLogs: any[] = [];
+const memClientProgressReports: any[] = [];
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -27,7 +34,23 @@ export async function getDb() {
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.lineUrl) throw new Error("User lineUrl is required for upsert");
   const db = await getDb();
-  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
+  if (!db) {
+    console.warn("[Database] Cannot upsert user: database not available. Falling back to in-memory store.");
+    const existing = memUsers.get(user.lineUrl);
+    const updated = {
+      ...existing,
+      ...user,
+      id: existing?.id ?? (memUsers.size + 1),
+      createdAt: existing?.createdAt ?? new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    };
+    memUsers.set(user.lineUrl, updated);
+    if (user.openId) {
+      memUsers.set(user.openId, updated);
+    }
+    return;
+  }
 
   try {
     const values: InsertUser = { 
@@ -35,14 +58,24 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       name: user.name,
       authCode: user.authCode,
       status: user.status ?? 'free',
-      expiredAt: user.expiredAt
+      expiredAt: user.expiredAt,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      customLeaderId: user.customLeaderId,
+      lineId: user.lineId,
     };
     
     const updateSet: Partial<User> = {
       name: user.name,
       authCode: user.authCode,
       status: user.status ?? 'free',
-      expiredAt: user.expiredAt
+      expiredAt: user.expiredAt,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      customLeaderId: user.customLeaderId,
+      lineId: user.lineId,
     };
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
@@ -52,16 +85,35 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
+export async function getUserByCustomLeaderId(customLeaderId: string) {
+  const db = await getDb();
+  if (!db) {
+    let found: any = undefined;
+    memUsers.forEach(u => {
+      if (u.customLeaderId === customLeaderId) {
+        found = u;
+      }
+    });
+    return found;
+  }
+  const result = await db.select().from(users).where(eq(users.customLeaderId, customLeaderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function getUserByLineUrl(lineUrl: string) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) {
+    return memUsers.get(lineUrl);
+  }
   const result = await db.select().from(users).where(eq(users.lineUrl, lineUrl)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) {
+    return memUsers.get(openId);
+  }
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -70,15 +122,44 @@ export async function getUserByOpenId(openId: string) {
 
 export async function saveAssessment(data: InsertAssessment): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    console.warn("[Database] Cannot save assessment: database not available. Falling back to in-memory store.");
+    const id = memAssessments.length + 1;
+    const record = {
+      ...data,
+      id,
+      isFavorite: false,
+      createdAt: new Date(),
+    };
+    memAssessments.push(record);
+    return id;
+  }
   const result = await db.insert(assessments).values(data);
   // @ts-ignore - mysql2 returns insertId
   return result[0].insertId as number;
 }
 
+export async function getAssessmentsByLineId(lineId: string) {
+  const db = await getDb();
+  if (!db) {
+    return memAssessments
+      .filter(a => a.lineId === lineId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  return db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.lineId, lineId))
+    .orderBy(desc(assessments.createdAt));
+}
+
 export async function getAssessmentsByLeaderLineUrl(leaderLineUrl: string) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    return memAssessments
+      .filter(a => a.leaderLineUrl === leaderLineUrl)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
   return db
     .select()
     .from(assessments)
@@ -88,19 +169,29 @@ export async function getAssessmentsByLeaderLineUrl(leaderLineUrl: string) {
 
 export async function toggleFavoriteAssessment(id: number, isFavorite: boolean) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    const item = memAssessments.find(a => a.id === id);
+    if (item) item.isFavorite = isFavorite;
+    return;
+  }
   await db.update(assessments).set({ isFavorite }).where(eq(assessments.id, id));
 }
 
 export async function deleteAssessment(id: number) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    const idx = memAssessments.findIndex(a => a.id === id);
+    if (idx !== -1) memAssessments.splice(idx, 1);
+    return;
+  }
   await db.delete(assessments).where(eq(assessments.id, id));
 }
 
 export async function getAssessmentById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) {
+    return memAssessments.find(a => a.id === id);
+  }
   const result = await db.select().from(assessments).where(eq(assessments.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -113,13 +204,22 @@ export async function saveMedicationImage(data: {
   mimeType?: string;
 }) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    memMedicationImages.push({
+      ...data,
+      id: memMedicationImages.length + 1,
+      createdAt: new Date(),
+    });
+    return;
+  }
   await db.insert(medicationImages).values(data);
 }
 
 export async function getMedicationImagesByAssessmentId(assessmentId: number) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    return memMedicationImages.filter(img => img.assessmentId === assessmentId);
+  }
   return db
     .select()
     .from(medicationImages)
@@ -130,7 +230,16 @@ export async function getMedicationImagesByAssessmentId(assessmentId: number) {
 
 export async function saveRecoveryLog(data: InsertRecoveryLog): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    console.warn("[Database] Cannot save recovery log: database not available. Falling back to in-memory store.");
+    const id = memRecoveryLogs.length + 1;
+    memRecoveryLogs.push({
+      ...data,
+      id,
+      createdAt: new Date(),
+    });
+    return id;
+  }
   const result = await db.insert(recoveryLogs).values(data);
   // @ts-ignore - mysql2 returns insertId
   return result[0].insertId as number;
@@ -138,7 +247,11 @@ export async function saveRecoveryLog(data: InsertRecoveryLog): Promise<number> 
 
 export async function getRecoveryLogsByLineId(lineId: string) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    return memRecoveryLogs
+      .filter(l => l.lineId === lineId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
   return db
     .select()
     .from(recoveryLogs)
@@ -152,22 +265,66 @@ export async function updateUserSubscription(openId: string, data: {
   stripeCustomerId?: string;
 }) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) {
+    console.log(`[DB] Updating subscription for ${openId} in-memory to ${data.subscriptionStatus}`);
+    const existing = memUsers.get(openId);
+    if (existing) {
+      Object.assign(existing, data);
+    } else {
+      memUsers.set(openId, {
+        openId,
+        lineUrl: `https://line.me/ti/p/mock_${openId}`,
+        name: "Mock Leader",
+        status: data.subscriptionStatus === 'active' ? 'pro' : 'free',
+        expiredAt: data.subscriptionExpiresAt ?? null,
+        ...data,
+      });
+    }
+    return;
+  }
   
   console.log(`[DB] Updating subscription for ${openId} to ${data.subscriptionStatus}`);
-  
-  // Try to update first
   const result = await db.update(users).set(data).where(eq(users.openId, openId));
-  
-  // If no rows affected, the user might not exist, so insert them
   // @ts-ignore - mysql2 returns affectedRows
   if (result[0].affectedRows === 0) {
     console.log(`[DB] User ${openId} not found during subscription update, creating new user`);
     await db.insert(users).values({
       openId,
       ...data
-    });
+    } as any);
   }
-  
   console.log(`[DB] Subscription update process completed for ${openId}`);
+}
+
+// ── Client Progress Report helpers ────────────────────────
+
+export async function saveClientProgressReport(data: InsertClientProgressReport): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot save client progress report: database not available. Falling back to in-memory store.");
+    const id = memClientProgressReports.length + 1;
+    memClientProgressReports.push({
+      ...data,
+      id,
+      createdAt: new Date(),
+    });
+    return id;
+  }
+  const result = await db.insert(clientProgressReports).values(data);
+  // @ts-ignore - mysql2 returns insertId
+  return result[0].insertId as number;
+}
+
+export async function getClientProgressReportsByLeaderId(leaderId: string) {
+  const db = await getDb();
+  if (!db) {
+    return memClientProgressReports
+      .filter(r => r.leaderId === leaderId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  return db
+    .select()
+    .from(clientProgressReports)
+    .where(eq(clientProgressReports.leaderId, leaderId))
+    .orderBy(desc(clientProgressReports.createdAt));
 }

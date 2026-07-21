@@ -174,9 +174,12 @@ export default function Step3Report() {
   const saveReport = useCallback(() => {
     if (saved) return;
     
-    // 儲存分流：只有已登入領導人狀態下才寫入資料庫
-    if (!state.leader) {
-      console.log("免費版評估：不調用 API，不寫入雲端資料庫");
+    // 儲存分流：只有已登入領導人狀態，或有帶入領導人關係（leaderId 或 refLine）時才寫入資料庫
+    const refLeaderId = basicInfo.leaderId || localStorage.getItem('putier_ref_leader_id') || "";
+    const refLine = localStorage.getItem('putier_ref_line') || "";
+    
+    if (!state.leader && !refLeaderId && !refLine) {
+      console.log("免費版評估：無推薦人，不寫入雲端資料庫");
       return;
     }
 
@@ -191,7 +194,9 @@ export default function Step3Report() {
     };
 
     createAssessment.mutate({
-      leaderLineUrl: state.leader.lineUrl,
+      leaderLineUrl: state.leader?.lineUrl || refLine || undefined,
+      leaderId: refLeaderId || undefined,
+      lineId: basicInfo.lineId || undefined,
       nickname: basicInfo.nickname,
       birthdate: basicInfo.birthdate,
       gender,
@@ -234,6 +239,23 @@ export default function Step3Report() {
     if (waterData) text += `\n💧 每日喝水：${waterData.liters} 公升`;
 
     text += `\n\n當身體開始有好轉反應情況，請第一時間與您的推薦人討論用量增減。`;
+
+    // 附帶評估報告的連結與領導人 ID
+    const refLeaderId = basicInfo.leaderId || localStorage.getItem('putier_ref_leader_id') || "";
+    const refLine = state.leader?.lineUrl || localStorage.getItem('putier_ref_line') || "";
+
+    if (state.savedAssessmentId) {
+      const shareParams = new URLSearchParams();
+      if (refLine) shareParams.set('line', refLine);
+      if (refLeaderId) shareParams.set('leader_id', refLeaderId);
+      const paramStr = shareParams.toString();
+      const reportUrl = window.location.origin + `/report/${state.savedAssessmentId}` + (paramStr ? `?${paramStr}` : "");
+      text += `\n\n💬 詳細評估報告請至：\n${reportUrl}`;
+    }
+
+    if (refLine) {
+      text += `\n\n🔗 立即添加專業顧問 LINE：\n${refLine}`;
+    }
 
     // Safety truncation for extreme cases
     const MAX_TEXT_LENGTH = 1000;

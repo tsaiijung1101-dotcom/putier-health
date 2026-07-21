@@ -146,7 +146,8 @@ export default function Report() {
   const handleLineShare = () => {
     // 優先順序：網址參數 > 領導人登入狀態 > localStorage 緩存
     const searchParams = new URLSearchParams(window.location.search);
-    const refLine = searchParams.get('line') || (data.leader_line_url as string) || localStorage.getItem('putier_ref_line') || "";
+    const refLine = searchParams.get('line') || (data.leaderLineUrl as string) || localStorage.getItem('putier_ref_line') || "";
+    const leaderId = searchParams.get('leader_id') || searchParams.get('ref') || (data.leaderId as string) || localStorage.getItem('putier_ref_leader_id') || "";
 
     const symptomList = selectedSymptoms.map(id => `• ${getSymptomLabel(id)}`).join("\n");
 
@@ -169,7 +170,11 @@ export default function Report() {
       data.customSymptoms ? `💊 藥單/手術史：${data.customSymptoms}` : null,
     ].filter(Boolean).join("\n");
 
-    const currentUrl = window.location.origin + `/report/${id}` + (refLine ? `?line=${encodeURIComponent(refLine)}` : "");
+    const shareParams = new URLSearchParams();
+    if (refLine) shareParams.set('line', refLine);
+    if (leaderId) shareParams.set('leader_id', leaderId);
+    const paramStr = shareParams.toString();
+    const currentUrl = window.location.origin + `/report/${id}` + (paramStr ? `?${paramStr}` : "");
 
     // Build the share text
     let text = `🌿 Putier 健康評估報告\n\n【🩺 評估項目總覽】\n${basicInfoText}\n\n📋 保健需求：\n${symptomList}\n\n✨ 預估好轉反應：\n${herxSummary || "（依個人體質而異）"}\n\n💊 每日建議：${reportData?.recommendedDosage || dosage.dailyCapsules} 顆\n📅 首套天數：${reportData?.firstSetDays || dosage.firstSetDays} 天\n\n💬 詳細評估報告請至：\n${currentUrl}\n\n🔗 立即添加專業顧問 LINE：\n${refLine || "請洽您的推薦人"}`;

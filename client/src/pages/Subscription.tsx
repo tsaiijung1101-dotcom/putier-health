@@ -1,16 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Zap, BarChart3, Bell, CheckCircle2, ArrowRight, ChevronLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useAssessment } from "@/contexts/AssessmentContext";
 
 export default function Subscription() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
+  const { state } = useAssessment();
+  const { leader } = state;
   const createSession = trpc.subscription.createSession.useMutation();
 
+  useEffect(() => {
+    if (!leader) {
+      toast.error("請先登入您的領導人帳號後再進行升級！");
+      navigate("/");
+    }
+  }, [leader, navigate]);
+
   const handleSubscribe = async () => {
+    if (!leader) {
+      toast.error("請先登入您的領導人帳號後再進行升級！");
+      navigate("/");
+      return;
+    }
     setLoading(true);
     // 在測試環境中，直接模擬支付成功導向
     setTimeout(() => {
