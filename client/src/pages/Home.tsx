@@ -37,9 +37,40 @@ export default function Home() {
   const [clientNameInput, setClientNameInput] = useState("");
   const [generatedTrackUrl, setGeneratedTrackUrl] = useState("");
 
+  const [showUpdateLineModal, setShowUpdateLineModal] = useState(false);
+  const [updateFullName, setUpdateFullName] = useState("");
+  const [updatePhone, setUpdatePhone] = useState("");
+  const [updateNewLineUrl, setUpdateNewLineUrl] = useState("");
+
   const { state, setLeader } = useAssessment();
   const { leader } = state;
   const isLeaderPro = leader?.status === "pro";
+
+  const updateLineUrlMutation = trpc.auth.updateLineUrl.useMutation({
+    onSuccess: () => {
+      toast.success("LINE 個人好友網址已成功更新！請使用新網址進行登入。");
+      if (updateNewLineUrl) setLeaderLineUrl(updateNewLineUrl);
+      setShowUpdateLineModal(false);
+      setUpdateFullName("");
+      setUpdatePhone("");
+      setUpdateNewLineUrl("");
+    },
+    onError: (err) => {
+      toast.error(err.message || "更新失敗，請確認真實姓名與手機號碼是否正確");
+    }
+  });
+
+  const handleUpdateLineUrl = () => {
+    if (!updateFullName.trim()) return toast.error("請輸入真實姓名");
+    if (!updatePhone.trim()) return toast.error("請輸入手機號碼");
+    if (!updateNewLineUrl.trim()) return toast.error("請輸入新的 LINE 好友網址");
+
+    updateLineUrlMutation.mutate({
+      fullName: updateFullName.trim(),
+      phone: updatePhone.trim(),
+      newLineUrl: updateNewLineUrl.trim(),
+    });
+  };
 
   const loginMutation = trpc.auth.leaderLogin.useMutation({
     onSuccess: (user) => {
@@ -510,6 +541,18 @@ export default function Home() {
               >
                 {loginMutation.isPending ? "登入中..." : "確認登入"}
               </Button>
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeaderLogin(false);
+                    setShowUpdateLineModal(true);
+                  }}
+                  className="text-xs text-blue-500 hover:text-blue-600 font-bold transition-colors underline"
+                >
+                  🔗 LINE 好友網址已變更？點此更新
+                </button>
+              </div>
             </div>
           ) : (
             /* Register Form */
@@ -750,6 +793,57 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update LINE URL Dialog */}
+      <Dialog open={showUpdateLineModal} onOpenChange={setShowUpdateLineModal}>
+        <DialogContent className="mx-4 rounded-2xl max-w-[90vw] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B4965] text-center text-lg flex items-center justify-center gap-1.5">
+              <Activity size={18} /> 更新 LINE 好友網址
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1 text-left">
+            <p className="text-xs text-gray-500 leading-relaxed bg-amber-50 border border-amber-200/50 p-3 rounded-xl">
+              💡 當您的 LINE 加好友條碼/連結更換時，輸入註冊時填寫的<b>真實姓名</b>與<b>手機號碼</b>，即可安全地將您的登入網址更新，確保帳號正常使用。
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#1B4965]">真實姓名 <span className="text-red-500">*</span></label>
+              <Input
+                placeholder="請輸入您的真實姓名"
+                value={updateFullName}
+                onChange={e => setUpdateFullName(e.target.value)}
+                className="rounded-xl h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#1B4965]">手機號碼 <span className="text-red-500">*</span></label>
+              <Input
+                type="tel"
+                placeholder="請輸入您的手機號碼"
+                value={updatePhone}
+                onChange={e => setUpdatePhone(e.target.value)}
+                className="rounded-xl h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#1B4965]">新的 LINE 個人好友網址 <span className="text-red-500">*</span></label>
+              <Input
+                placeholder="https://line.me/ti/p/..."
+                value={updateNewLineUrl}
+                onChange={e => setUpdateNewLineUrl(e.target.value)}
+                className="rounded-xl h-9 text-sm"
+              />
+            </div>
+            <Button
+              onClick={handleUpdateLineUrl}
+              disabled={updateLineUrlMutation.isPending}
+              className="w-full h-11 rounded-xl font-bold mt-2 bg-[#1B4965] text-white"
+            >
+              {updateLineUrlMutation.isPending ? "更新中..." : "確認更新網址"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

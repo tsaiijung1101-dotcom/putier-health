@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, assessments, medicationImages, InsertAssessment, recoveryLogs, InsertRecoveryLog, User, clientProgressReports, InsertClientProgressReport, ClientProgressReport } from "../drizzle/schema";
@@ -116,6 +116,45 @@ export async function getUserByOpenId(openId: string) {
   }
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByFullNameAndPhone(fullName: string, phone: string) {
+  const db = await getDb();
+  if (!db) {
+    let found: any = undefined;
+    memUsers.forEach(u => {
+      if (u.fullName === fullName && u.phone === phone) {
+        found = u;
+      }
+    });
+    return found;
+  }
+  const result = await db.select().from(users).where(and(eq(users.fullName, fullName), eq(users.phone, phone))).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateUserLineUrl(oldLineUrl: string, newLineUrl: string) {
+  const db = await getDb();
+  if (!db) {
+    const user = memUsers.get(oldLineUrl);
+    if (user) {
+      user.lineUrl = newLineUrl;
+      memUsers.delete(oldLineUrl);
+      memUsers.set(newLineUrl, user);
+      if (user.openId) {
+        memUsers.set(user.openId, user);
+      }
+    }
+    memAssessments.forEach(a => {
+      if (a.leaderLineUrl === oldLineUrl) {
+        a.leaderLineUrl = newLineUrl;
+      }
+    });
+    return;
+  }
+
+  await db.update(users).set({ lineUrl: newLineUrl }).where(eq(users.lineUrl, oldLineUrl));
+  await db.update(assessments).set({ leaderLineUrl: newLineUrl }).where(eq(assessments.leaderLineUrl, oldLineUrl));
 }
 
 // ── Assessment helpers ────────────────────────────────────

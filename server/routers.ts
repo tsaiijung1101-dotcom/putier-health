@@ -20,6 +20,8 @@ import {
   getUserByCustomLeaderId,
   saveClientProgressReport,
   getClientProgressReportsByLeaderId,
+  getUserByFullNameAndPhone,
+  updateUserLineUrl,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -216,6 +218,30 @@ export const appRouter = router({
         }
 
         return user;
+      }),
+    updateLineUrl: publicProcedure
+      .input(
+        z.object({
+          fullName: z.string().min(1),
+          phone: z.string().min(1),
+          newLineUrl: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const user = await getUserByFullNameAndPhone(input.fullName, input.phone);
+        if (!user) {
+          throw new Error("找不到符合此真實姓名與手機號碼的領導人帳號");
+        }
+
+        if (user.lineUrl !== input.newLineUrl) {
+          const conflictUser = await getUserByLineUrl(input.newLineUrl);
+          if (conflictUser) {
+            throw new Error("此新的 LINE 個人好友網址已被其他帳號註冊，請輸入您個人的新網址");
+          }
+          await updateUserLineUrl(user.lineUrl, input.newLineUrl);
+        }
+
+        return { success: true };
       }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);

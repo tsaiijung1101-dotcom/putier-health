@@ -111,14 +111,14 @@ export default function Step1BasicInfo() {
         <p className="text-xs text-gray-400 mt-1.5">填寫後可透過 LINE ID 查詢歷史評估紀錄</p>
       </div>
 
-      {/* 領導人 ID */}
+      {/* 領導人 暱稱 */}
       <div className="putier-card">
         <div className="flex items-center gap-2 mb-3">
           <User size={16} className="text-[#1B4965]" />
-          <Label className="text-sm font-bold text-[#1B4965]">領導人 ID（選填）</Label>
+          <Label className="text-sm font-bold text-[#1B4965]">領導人 暱稱（選填）</Label>
         </div>
         <Input
-          placeholder="請輸入或帶入領導人 ID"
+          placeholder="請輸入或帶入領導人 暱稱"
           value={basicInfo.leaderId || ""}
           onChange={e => {
             updateBasicInfo({ leaderId: e.target.value });
