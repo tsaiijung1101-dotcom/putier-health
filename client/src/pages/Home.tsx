@@ -222,16 +222,18 @@ export default function Home() {
                         顧問：{leader.fullName || leader.name || '已連動'} ({leader.customLeaderId || '無'})
                       </span>
                     </div>
-                    <Button 
-                      onClick={() => navigate("/crm")}
-                      size="sm"
-                      className="h-7 px-3 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-[#1B4965] border-none rounded-full font-bold shadow-lg"
-                    >
-                      <Activity size={12} className="mr-1" />
-                      <span className="text-[10px]">查看健康紀錄</span>
-                    </Button>
+                    {isLeaderPro && (
+                      <Button 
+                        onClick={() => navigate("/crm")}
+                        size="sm"
+                        className="h-7 px-3 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-[#1B4965] border-none rounded-full font-bold shadow-lg"
+                      >
+                        <Activity size={12} className="mr-1" />
+                        <span className="text-[10px]">查看健康紀錄</span>
+                      </Button>
+                    )}
                   </div>
-                  {isPro && (
+                  {(isPro || isLeaderPro) && (
                     <div className="flex items-center gap-1.5 px-3 py-0.5 bg-gradient-to-r from-amber-400/20 to-amber-600/20 rounded-full border border-amber-300/30">
                       <Crown size={10} className="text-amber-400" />
                       <span className="text-[9px] font-black text-amber-400 tracking-wider uppercase">Pro</span>
@@ -247,7 +249,7 @@ export default function Home() {
                     <User size={14} className="text-white/80" />
                     <span className="text-[10px] font-bold text-white/90 tracking-wider">領導人專區</span>
                   </div>
-                  {isPro ? (
+                  {(isPro || isLeaderPro) ? (
                     <div className="flex items-center gap-1.5 px-3 py-0.5 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-lg border border-amber-300/30">
                       <Crown size={10} className="text-white" />
                       <span className="text-[9px] font-black text-white tracking-wider uppercase">Pro Member</span>

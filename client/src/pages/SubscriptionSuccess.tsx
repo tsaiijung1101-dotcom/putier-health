@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, PartyPopper, ArrowRight, Shield, Zap, ClipboardList, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useAssessment } from "@/contexts/AssessmentContext";
 
 export default function SubscriptionSuccess() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const { state } = useAssessment();
+  const { leader } = state;
   const activateMutation = trpc.subscription.activateMock.useMutation();
   const [clickCount, setClickCount] = useState(0);
   const [isActivated, setIsActivated] = useState(false);
@@ -20,8 +23,12 @@ export default function SubscriptionSuccess() {
       setClickCount(0);
       const code = window.prompt("🔑 請輸入專業版啟用專碼：");
       if (code === "pro123") {
+        if (!leader || !leader.lineUrl) {
+          toast.error("請先在首頁登入領導人帳號，再進行金鑰開通！");
+          return;
+        }
         try {
-          await activateMutation.mutateAsync();
+          await activateMutation.mutateAsync({ lineUrl: leader.lineUrl });
           await utils.auth.me.refetch();
           setIsActivated(true);
           toast.success("🎉 專碼驗證成功！已成功開通付費專業版權限。");
@@ -31,8 +38,6 @@ export default function SubscriptionSuccess() {
       } else if (code !== null) {
         toast.error("❌ 專碼錯誤，無法開啟專業版權限！");
       }
-    } else if (nextCount >= 2) {
-      toast.info(`再點擊 ${5 - nextCount} 次即可輸入啟用專碼`);
     }
   };
 
@@ -45,7 +50,6 @@ export default function SubscriptionSuccess() {
       <h1 
         onClick={handleTextClick}
         className="text-2xl font-black text-gray-800 mb-2 flex items-center gap-2 cursor-pointer select-none active:opacity-70"
-        title="連續點擊 5 次以啟用測試專碼"
       >
         支付成功！ <PartyPopper className="text-yellow-500" />
       </h1>
@@ -53,7 +57,7 @@ export default function SubscriptionSuccess() {
       <p className="text-gray-500 text-sm mb-12 leading-relaxed max-w-sm">
         {isActivated 
           ? "🎉 您的帳戶專業版權限已成功開啟，現在您可以享受所有專屬大數據管理功能。"
-          : "感謝您訂閱 Putier Health 專業版。請連續點擊上方「支付成功！」文字 5 次並輸入專碼「pro123」以啟用測試帳戶。"}
+          : "感謝您訂閱 Putier Health 專業版。您的帳戶權限已完成開通，您隨時可以開始體驗專業版專屬功能。"}
       </p>
 
       <div className="w-full max-w-sm bg-blue-50/50 rounded-3xl p-6 mb-8 text-left border border-blue-100">

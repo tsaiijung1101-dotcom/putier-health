@@ -335,6 +335,34 @@ export async function updateUserSubscription(openId: string, data: {
   console.log(`[DB] Subscription update process completed for ${openId}`);
 }
 
+export async function updateUserSubscriptionByLineUrl(lineUrl: string, data: {
+  subscriptionStatus: string;
+  subscriptionExpiresAt?: Date | null;
+  stripeCustomerId?: string;
+  status?: string;
+  expiredAt?: Date | null;
+}) {
+  const db = await getDb();
+  if (!db) {
+    console.log(`[DB] Updating subscription for ${lineUrl} in-memory to ${data.subscriptionStatus}`);
+    const existing = memUsers.get(lineUrl);
+    if (existing) {
+      Object.assign(existing, data);
+      if (data.status) existing.status = data.status;
+      if (data.expiredAt !== undefined) existing.expiredAt = data.expiredAt;
+    }
+    return;
+  }
+  
+  console.log(`[DB] Updating subscription for ${lineUrl} to ${data.subscriptionStatus}`);
+  const updateData = {
+    ...data,
+    status: data.status || (data.subscriptionStatus === 'active' ? 'pro' : 'free'),
+    expiredAt: data.expiredAt || data.subscriptionExpiresAt,
+  };
+  await db.update(users).set(updateData).where(eq(users.lineUrl, lineUrl));
+}
+
 // ── Client Progress Report helpers ────────────────────────
 
 export async function saveClientProgressReport(data: InsertClientProgressReport): Promise<number> {

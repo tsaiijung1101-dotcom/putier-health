@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ShieldCheck, Zap, BarChart3, Bell, CheckCircle2, ArrowRight, ChevronLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -8,10 +9,9 @@ import { useAssessment } from "@/contexts/AssessmentContext";
 
 export default function Subscription() {
   const [, navigate] = useLocation();
-  const [loading, setLoading] = useState(false);
-  const { state } = useAssessment();
+  const [couponCode, setCouponCode] = useState("");
+  const { state, setLeader } = useAssessment();
   const { leader } = state;
-  const createSession = trpc.subscription.createSession.useMutation();
 
   useEffect(() => {
     if (!leader) {
@@ -20,18 +20,38 @@ export default function Subscription() {
     }
   }, [leader, navigate]);
 
-  const handleSubscribe = async () => {
-    if (!leader) {
-      toast.error("請先登入您的領導人帳號後再進行升級！");
+  const activateCouponMutation = trpc.subscription.activateCoupon.useMutation({
+    onSuccess: (res) => {
+      if (leader) {
+        setLeader({
+          ...leader,
+          status: "pro",
+        });
+      }
+      toast.success(res.message || "優惠碼啟用成功！已開通 38 天專業版權限。");
+      navigate("/");
+    },
+    onError: (err) => {
+      toast.error(err.message || "啟用失敗，請確認優惠碼是否正確");
+    }
+  });
+
+  const handleActivateCoupon = () => {
+    if (!leader || !leader.lineUrl) {
+      toast.error("請先登入您的領導人帳號！");
       navigate("/");
       return;
     }
-    setLoading(true);
-    // 在測試環境中，直接模擬支付成功導向
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/subscription/success");
-    }, 1500);
+    const trimmed = couponCode.trim();
+    if (!trimmed) {
+      toast.error("請輸入優惠代碼");
+      return;
+    }
+
+    activateCouponMutation.mutate({
+      lineUrl: leader.lineUrl,
+      couponCode: trimmed,
+    });
   };
 
   return (
@@ -56,17 +76,29 @@ export default function Subscription() {
 
       <div className="px-6 -mt-8">
         <div className="bg-white rounded-3xl p-6 shadow-lg space-y-8">
-          <div className="text-center">
-            <div className="inline-block bg-blue-50 text-[#1B4965] px-4 py-1 rounded-full text-xs font-bold mb-2">
-              年度訂閱方案
+          <div className="text-center space-y-3">
+            <div className="inline-block bg-amber-50 text-amber-700 border border-amber-200 px-4 py-1 rounded-full text-xs font-bold">
+              🔥 內測推廣優惠
             </div>
-            <div className="text-4xl font-black text-[#1B4965]">
-              NT$ 2,980 <span className="text-sm font-normal text-gray-400">/ 年</span>
+            <div className="text-xl font-black text-[#1B4965]">
+              輸入優惠碼免費啟用 Pro
             </div>
-            <p className="text-xs text-gray-400 mt-2">每天不到 9 元，換取專業的修復指導</p>
+            <p className="text-xs text-gray-400 max-w-xs mx-auto">
+              請輸入您的專屬優惠碼（例如：RIWAY38）以立即啟用付費專業版權限。
+            </p>
+            
+            <div className="pt-2 max-w-xs mx-auto">
+              <Input
+                type="text"
+                placeholder="請輸入優惠代碼..."
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                className="w-full h-11 text-center text-sm font-bold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B4965] uppercase placeholder:normal-case placeholder:font-normal"
+              />
+            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 border-t border-gray-50 pt-6">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Zap size={18} className="text-yellow-500" />
               專業版專屬功能
@@ -91,18 +123,18 @@ export default function Subscription() {
           </div>
 
           <Button
-            onClick={handleSubscribe}
-            disabled={loading}
-            className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={handleActivateCoupon}
+            disabled={activateCouponMutation.isPending}
+            className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] bg-[#1B4965] text-white"
             style={{ background: "linear-gradient(135deg, #1B4965 0%, #2a6a91 100%)" }}
           >
-            {loading ? "處理中..." : "立即升級專業版"}
+            {activateCouponMutation.isPending ? "啟用中..." : "確認啟用優惠碼"}
             <ArrowRight className="ml-2" size={20} />
           </Button>
 
           <div className="text-center">
             <p className="text-[10px] text-gray-400">
-              安全支付由 Stripe 提供支援。訂閱將在 1 年後自動續約，您可以隨時取消。
+              安全金鑰驗證由系統雲端提供。享有時效到期後，系統將自動恢復為免費版。
             </p>
           </div>
         </div>

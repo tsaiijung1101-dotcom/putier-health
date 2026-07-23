@@ -35,6 +35,12 @@ export default function CRM() {
     return null;
   }
 
+  if (leader.status !== "pro") {
+    toast.error("此功能僅限專業版領導人使用，請先升級！");
+    navigate("/");
+    return null;
+  }
+
   const isLeaderPro = leader.status === "pro";
 
   const { data: assessments, isLoading, refetch } = trpc.assessment.getByLeader.useQuery({

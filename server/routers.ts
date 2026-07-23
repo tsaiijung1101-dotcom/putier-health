@@ -22,6 +22,7 @@ import {
   getClientProgressReportsByLeaderId,
   getUserByFullNameAndPhone,
   updateUserLineUrl,
+  updateUserSubscriptionByLineUrl,
 } from "./db";
 import { getInstantFeedback } from "@shared/recoveryAnalysis";
 import { createCheckoutSession } from "./stripe";
@@ -332,21 +333,49 @@ export const appRouter = router({
       if (!user || !user.openId) throw new Error("Unauthorized");
       return createCheckoutSession(user.openId, user.email || undefined);
     }),
-    activateMock: publicProcedure.mutation(async ({ ctx }) => {
-      const user = ctx.user;
-      if (!user || !user.openId) throw new Error("Unauthorized");
-      
-      const expiresAt = new Date();
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      
-      await updateUserSubscription(user.openId, {
-        subscriptionStatus: 'active',
-        subscriptionExpiresAt: expiresAt,
-        stripeCustomerId: 'mock_customer_id',
-      });
-      
-      return { success: true };
-    }),
+    activateMock: publicProcedure
+      .input(z.object({ lineUrl: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const user = await getUserByLineUrl(input.lineUrl);
+        if (!user) throw new Error("找不到該領導人帳號");
+
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+        await updateUserSubscriptionByLineUrl(user.lineUrl, {
+          subscriptionStatus: 'active',
+          subscriptionExpiresAt: expiresAt,
+          stripeCustomerId: 'mock_customer_id',
+        });
+
+        return { success: true };
+      }),
+    activateCoupon: publicProcedure
+      .input(
+        z.object({
+          lineUrl: z.string().min(1),
+          couponCode: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input }) => {
+        if (input.couponCode.trim() !== "RIWAY38") {
+          throw new Error("優惠碼錯誤，請輸入正確的優惠碼！");
+        }
+
+        const user = await getUserByLineUrl(input.lineUrl);
+        if (!user) throw new Error("找不到該領導人帳號，請先登入");
+
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 38);
+
+        await updateUserSubscriptionByLineUrl(user.lineUrl, {
+          subscriptionStatus: 'active',
+          subscriptionExpiresAt: expiresAt,
+          stripeCustomerId: 'coupon_riway38',
+        });
+
+        return { success: true, message: "優惠碼兌換成功！已享有 38 天專業版時效。" };
+      }),
   }),
   clientProgress: router({
     submitReport: publicProcedure
