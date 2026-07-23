@@ -14,13 +14,16 @@ import {
   Activity,
   UserCheck,
   ClipboardList,
-  Trash2
+  Trash2,
+  Link2,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function CRM() {
   const [, navigate] = useLocation();
@@ -28,6 +31,9 @@ export default function CRM() {
   const { leader } = state;
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"assessments" | "progress">("assessments");
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [selectedClientName, setSelectedClientName] = useState("");
+  const [generatedLink, setGeneratedLink] = useState("");
 
   // 權限檢查
   if (!leader) {
@@ -329,8 +335,25 @@ export default function CRM() {
                           ))}
                         </div>
 
-                        <div className="flex items-center justify-end mt-4 text-[10px] font-bold text-blue-500 gap-1">
-                          查看完整報告 <ChevronRight size={12} />
+                        <div className="flex items-center justify-between mt-5 pt-3 border-t border-gray-100">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/track?leader_id=${encodeURIComponent(leader.customLeaderId || "")}&client_id=${encodeURIComponent(item.nickname)}`;
+                              setGeneratedLink(url);
+                              setSelectedClientName(item.nickname);
+                              setShowLinkModal(true);
+                            }}
+                            className="h-8 px-3 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-bold text-xs flex items-center gap-1.5 transition-colors border border-green-200/50"
+                          >
+                            <Link2 size={12} />
+                            生成追蹤連結
+                          </button>
+                          
+                          <div className="flex items-center text-[10px] font-bold text-blue-500 gap-1">
+                            查看完整報告 <ChevronRight size={12} />
+                          </div>
                         </div>
                       </div>
                     );
@@ -451,6 +474,50 @@ export default function CRM() {
           </div>
         )}
       </div>
+
+      {/* 追蹤連結 Modal */}
+      <Dialog open={showLinkModal} onOpenChange={setShowLinkModal}>
+        <DialogContent className="max-w-[360px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B4965] flex items-center gap-2">
+              <Link2 size={18} className="text-green-500" />
+              <span>客戶追蹤連結已生成</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2 text-left">
+            <p className="text-xs text-gray-500">
+              已為客戶 <span className="font-bold text-[#1B4965]">{selectedClientName}</span> 產生專屬的每日健康進度追蹤連結：
+            </p>
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+              <div className="text-[10px] font-bold text-gray-400 mb-1">專屬追蹤連結</div>
+              <div className="text-xs text-gray-700 break-all select-all font-mono">
+                {generatedLink}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedLink);
+                  toast.success("連結複製成功！");
+                }}
+                className="h-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs"
+              >
+                複製連結
+              </Button>
+              <Button
+                onClick={() => {
+                  const shareText = `您好！這是您的專屬每日健康修復進度回報連結，請每天服用後點擊此處回報您的服用情況與身體反應：\n${generatedLink}`;
+                  window.open(`https://line.me/R/share?text=${encodeURIComponent(shareText)}`, "_blank");
+                }}
+                className="h-10 rounded-xl bg-[#06C755] hover:bg-[#06C755]/90 text-white font-bold text-xs flex items-center justify-center gap-1 border-none"
+              >
+                分享至 LINE
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
