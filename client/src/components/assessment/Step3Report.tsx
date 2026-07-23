@@ -451,14 +451,7 @@ export default function Step3Report() {
             <button
               type="button"
               onClick={() => {
-                const nextVal = !accelerate;
-                setAccelerate(nextVal);
-                if (nextVal) {
-                  setSetCount(2); // Automatically suggest 2 sets for acceleration
-                  toast.info("已為您自動調整建議產品套數為 2 套，以確保加速修復期間用量充足！");
-                } else {
-                  setSetCount(1); // Set back to 1 set if they toggle off
-                }
+                setAccelerate(!accelerate);
               }}
               className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex-shrink-0 ${
                 accelerate ? "bg-[#1B4965]" : "bg-gray-300"
