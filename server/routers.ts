@@ -92,6 +92,11 @@ const assessmentRouter = router({
 
       // 同步到 Google Sheets (加上容錯處理，讀取 reportData 內部欄位)
       try {
+        const symptomsText = input.selectedSymptoms.join(', ') + 
+          (input.reportData?.customDemand ? ` | 自訂需求: ${input.reportData.customDemand}` : "");
+        const dosageText = `${input.reportData?.recommendedDosage || 'N/A'} 顆/天` +
+          (input.reportData?.accelerate ? " [⚡ 加速修復]" : "");
+
         await appendRow('評估報告!A:M', [
           new Date().toLocaleString('zh-TW'),
           input.lineId || '匿名',
@@ -100,8 +105,8 @@ const assessmentRouter = router({
           input.gender === 'male' ? '男' : '女',
           input.reportData?.bmi || 'N/A',
           input.reportData?.dailyWater || 'N/A',
-          input.selectedSymptoms.join(', '),
-          input.reportData?.recommendedDosage || 'N/A',
+          symptomsText,
+          dosageText,
           input.reportData?.firstSetDays || 'N/A',
           input.medications || '無',
           input.surgeryHistory || '無',

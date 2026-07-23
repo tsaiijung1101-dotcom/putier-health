@@ -26,6 +26,9 @@ export default function Step1BasicInfo() {
   const [uploading, setUploading] = useState(false);
   const [agreedDisclaimer, setAgreedDisclaimer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [hasMedication, setHasMedication] = useState<"yes" | "no">(
+    basicInfo.medications.trim() || basicInfo.medicationImages.length > 0 ? "yes" : "no"
+  );
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -55,6 +58,17 @@ export default function Step1BasicInfo() {
     if (!basicInfo.gender) {
       toast.error("請選擇性別");
       return;
+    }
+    if (hasMedication === "yes") {
+      const hasText = basicInfo.medications.trim() !== "";
+      const hasImg = basicInfo.medicationImages.length > 0;
+      if (!hasText && !hasImg) {
+        toast.error("您選擇了有服用藥物，請拍照上傳藥物照片「或」輸入藥物名稱與劑量！");
+        return;
+      }
+    } else {
+      // Clear medication info if user selected "No"
+      updateBasicInfo({ medications: "", medicationImages: [] });
     }
     if (!agreedDisclaimer) {
       toast.error("您必須同意免責聲明才能進行評估");
@@ -244,52 +258,87 @@ export default function Step1BasicInfo() {
       <div className="putier-card">
         <div className="flex items-center gap-2 mb-3">
           <Pill size={16} className="text-[#1B4965]" />
-          <Label className="text-sm font-bold text-[#1B4965]">用藥情況（選填）</Label>
+          <Label className="text-sm font-bold text-[#1B4965]">
+            目前是否有在持續吃用藥物？ (如慢性病處方簽...等) <span className="text-red-500">*</span>
+          </Label>
         </div>
-        <Textarea
-          placeholder="請描述目前用藥情況（藥物名稱、劑量等）"
-          value={basicInfo.medications}
-          onChange={e => updateBasicInfo({ medications: e.target.value })}
-          className="rounded-xl resize-none"
-          rows={3}
-        />
-        {/* Image Upload */}
-        <div className="mt-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 text-sm text-[#1B4965] font-medium border border-dashed border-[#1B4965]/40 rounded-xl px-4 py-2.5 w-full justify-center hover:bg-[#1B4965]/5 transition-colors disabled:opacity-50"
-          >
-            <Camera size={16} />
-            {uploading ? "上傳中..." : "拍照或選擇藥物圖片（可多張）"}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={e => handleImageUpload(e.target.files)}
-          />
+        
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {[
+            { value: "yes", label: "有持續吃用" },
+            { value: "no", label: "無持續吃用" },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setHasMedication(opt.value as "yes" | "no")}
+              className={`h-11 rounded-xl border-2 font-bold text-sm transition-all duration-200 ${
+                hasMedication === opt.value
+                  ? "border-[#1B4965] bg-[#1B4965]/5 text-[#1B4965]"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
-        {/* Image Preview */}
-        {basicInfo.medicationImages.length > 0 && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {basicInfo.medicationImages.map((img, i) => (
-              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200">
-                <img
-                  src={img.url}
-                  alt={img.originalName}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => removeImage(i)}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"
-                >
-                  <X size={10} />
-                </button>
+
+        {hasMedication === "yes" && (
+          <div className="space-y-3 pt-3 border-t border-gray-100 transition-all duration-300">
+            <Label className="text-xs font-bold text-gray-500 block">
+              請完成以下任一項填寫： <span className="text-red-500">(照片上傳 或 藥名與劑量擇一必填)</span>
+            </Label>
+            
+            <Textarea
+              placeholder="請輸入目前服用的藥物名稱與劑量說明..."
+              value={basicInfo.medications}
+              onChange={e => updateBasicInfo({ medications: e.target.value })}
+              className="rounded-xl resize-none text-sm"
+              rows={3}
+            />
+
+            {/* Image Upload */}
+            <div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 text-sm text-[#1B4965] font-medium border border-dashed border-[#1B4965]/40 rounded-xl px-4 py-2.5 w-full justify-center hover:bg-[#1B4965]/5 transition-colors disabled:opacity-50"
+              >
+                <Camera size={16} />
+                {uploading ? "上傳中..." : "拍照或上傳處方簽/藥盒照片（可多張）"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={e => handleImageUpload(e.target.files)}
+              />
+            </div>
+
+            {/* Image Preview */}
+            {basicInfo.medicationImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {basicInfo.medicationImages.map((img, i) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200">
+                    <img
+                      src={img.url}
+                      alt={img.originalName}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

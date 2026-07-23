@@ -38,6 +38,7 @@ export interface AssessmentState {
   step: number;
   basicInfo: BasicInfo;
   selectedSymptoms: string[];
+  customDemand: string;
   savedAssessmentId: number | null;
   leader: LeaderInfo | null;
 }
@@ -47,6 +48,7 @@ interface AssessmentContextType {
   setStep: (step: number) => void;
   updateBasicInfo: (info: Partial<BasicInfo>) => void;
   setSelectedSymptoms: (symptoms: string[]) => void;
+  setCustomDemand: (demand: string) => void;
   toggleSymptom: (symptomId: string) => void;
   setSavedAssessmentId: (id: number) => void;
   setLeader: (leader: LeaderInfo | null) => void;
@@ -71,6 +73,7 @@ const defaultState: AssessmentState = {
   step: 1,
   basicInfo: defaultBasicInfo,
   selectedSymptoms: [],
+  customDemand: "",
   savedAssessmentId: null,
   leader: JSON.parse(localStorage.getItem("putier_leader") || "null"),
 };
@@ -87,6 +90,9 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
 
   const setSelectedSymptoms = (symptoms: string[]) =>
     setState(s => ({ ...s, selectedSymptoms: symptoms }));
+
+  const setCustomDemand = (customDemand: string) =>
+    setState(s => ({ ...s, customDemand }));
 
   const toggleSymptom = (symptomId: string) =>
     setState(s => ({
@@ -121,6 +127,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         setStep,
         updateBasicInfo,
         setSelectedSymptoms,
+        setCustomDemand,
         toggleSymptom,
         setSavedAssessmentId,
         setLeader,

@@ -27,6 +27,7 @@ import {
   BookOpen,
   Sparkles,
   Home,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -101,10 +102,42 @@ export default function Step3Report() {
   const [setCount, setSetCount] = useState(1);
   const [saved, setSaved] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [accelerate, setAccelerate] = useState(false);
   const hasSevereCondition = detectSevereConditions(basicInfo.medications || "", basicInfo.surgeryHistory || "");
 
   // Calculate dosage FIRST
-  const dosage = calculateDosage(age, gender, selectedSymptoms, weight, setCount);
+  const normalDosage = calculateDosage(age, gender, selectedSymptoms, weight, setCount);
+
+  let adjustedDailyCapsules = normalDosage.dailyCapsules;
+  let adjustedDosageGuide = normalDosage.dosageGuide;
+  let adjustedImprovementCycles = normalDosage.improvementCycles;
+
+  if (accelerate) {
+    if (normalDosage.dailyCapsules === 2) {
+      adjustedDailyCapsules = 4;
+      adjustedDosageGuide = "⚡ 加速修復：建議每日服用 4 顆，早餐後服用 2 顆，晚餐後服用 2 顆，搭配溫水送服。";
+      adjustedImprovementCycles = "🎯 加速修復方案：預計縮短至 3-6 週（原需 2-3 個月）即可感受到明顯改善，建議持續服用 3-4 個月以達到最佳修復效果。";
+    } else if (normalDosage.dailyCapsules === 3) {
+      adjustedDailyCapsules = 6;
+      adjustedDosageGuide = "⚡ 加速修復：建議每日服用 6 顆，早餐後服用 2 顆，午餐後服用 2 顆，晚餐後服用 2 顆，搭配溫水送服。";
+      adjustedImprovementCycles = "🎯 加速修復方案：預計縮短至 3-4 週（原需 2-3 個月）即可感受到明顯改善，建議持續服用 3-4 個月以達到最佳修復效果。";
+    } else if (normalDosage.dailyCapsules === 4) {
+      adjustedDailyCapsules = 8;
+      adjustedDosageGuide = "⚡ 加速修復：建議每日服用 8 顆，早餐後服用 3 顆，午餐後服用 2 顆，晚餐後服用 3 顆，搭配溫水送服。";
+      adjustedImprovementCycles = "🎯 加速修復方案：預計縮短至 3-4 週（原需 6-8 週）即可感受到明顯改善，建議持續服用 3 個月以上以達到最佳修復效果。";
+    } else {
+      adjustedDailyCapsules = Math.min(10, normalDosage.dailyCapsules * 2);
+      adjustedDosageGuide = `⚡ 加速修復：建議每日服用 ${adjustedDailyCapsules} 顆，早餐後服用 4 顆，午餐後服用 3 顆，晚餐後服用 ${adjustedDailyCapsules - 7} 顆，搭配溫水送服。`;
+      adjustedImprovementCycles = "🎯 加速修復方案：預計縮短至 2-3 週（原需 4-6 週）即可感受到明顯改善，建議持續服用 3 個月以上以達到最佳修復效果。";
+    }
+  }
+
+  const dosage = {
+    ...normalDosage,
+    dailyCapsules: adjustedDailyCapsules,
+    dosageGuide: adjustedDosageGuide,
+    improvementCycles: adjustedImprovementCycles,
+  };
 
   // Calculate days based on severe condition status
   const calculateDays = (sets: number) => {
@@ -118,6 +151,9 @@ export default function Step3Report() {
         5: { min: 380, max: 430 },
       };
       const range = rangeMap[sets] || { min: 75, max: 95 }; // Default to 1-set range
+      if (accelerate) {
+        return { min: Math.round(range.min / 2), max: Math.round(range.max / 2), isRange: true };
+      }
       return { min: range.min, max: range.max, isRange: true };
     } else {
       // For normal conditions, return fixed value
@@ -190,7 +226,9 @@ export default function Step3Report() {
       setCount,
       bmi: bmiData?.bmi ?? null,
       dailyWater: waterData?.ml ?? null,
-      daysData
+      daysData,
+      customDemand: state.customDemand || undefined,
+      accelerate,
     };
 
     createAssessment.mutate({
@@ -210,7 +248,7 @@ export default function Step3Report() {
         : undefined,
       reportData,
     });
-  }, [saved, dosage, basicInfo, selectedSymptoms, height, weight, bmiData, waterData, state.leader, setCount, daysData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [saved, dosage, basicInfo, selectedSymptoms, height, weight, bmiData, waterData, state.leader, setCount, daysData, accelerate, state.customDemand]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     saveReport();
@@ -395,6 +433,43 @@ export default function Step3Report() {
             <div className="text-xs text-green-600 font-medium">總顆數</div>
             <div className="text-2xl font-bold text-green-700 mt-1">{setCount * 420}</div>
             <div className="text-xs text-green-600">顆</div>
+          </div>
+        </div>
+
+        {/* 希望加快改善？切換按鈕 */}
+        <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-300/30 rounded-2xl p-4 mb-3">
+          <div className="flex items-center justify-between">
+            <div className="text-left pr-2">
+              <div className="text-sm font-bold text-[#1B4965] flex items-center gap-1.5">
+                <Zap size={15} className="text-amber-500 animate-pulse flex-shrink-0" />
+                希望加快改善修復速度？
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                開啟後，系統將動態調整每日服用量，使預計改善週期縮短一半。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !accelerate;
+                setAccelerate(nextVal);
+                if (nextVal) {
+                  setSetCount(2); // Automatically suggest 2 sets for acceleration
+                  toast.info("已為您自動調整建議產品套數為 2 套，以確保加速修復期間用量充足！");
+                } else {
+                  setSetCount(1); // Set back to 1 set if they toggle off
+                }
+              }}
+              className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex-shrink-0 ${
+                accelerate ? "bg-[#1B4965]" : "bg-gray-300"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200 ${
+                  accelerate ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
         </div>
 

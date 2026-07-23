@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useAssessment } from "@/contexts/AssessmentContext";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { SYMPTOM_CATEGORIES } from "../../../../shared/healthData";
-import { ChevronRight, ChevronDown, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, Check, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Step2Symptoms() {
-  const { state, toggleSymptom, setStep } = useAssessment();
-  const { basicInfo, selectedSymptoms } = state;
+  const { state, toggleSymptom, setCustomDemand, setStep } = useAssessment();
+  const { basicInfo, selectedSymptoms, customDemand } = state;
   const gender = basicInfo.gender as "male" | "female" | "";
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(SYMPTOM_CATEGORIES.map(c => c.id))
@@ -23,8 +25,8 @@ export default function Step2Symptoms() {
   };
 
   const handleNext = () => {
-    if (selectedSymptoms.length === 0) {
-      toast.error("請至少勾選一項保健需求");
+    if (selectedSymptoms.length === 0 && !customDemand.trim()) {
+      toast.error("請至少勾選一項保健需求，或在最下方填寫您的自訂保健需求！");
       return;
     }
     setStep(3);
@@ -133,6 +135,22 @@ export default function Step2Symptoms() {
           </div>
         </div>
       )}
+
+      {/* 其它保健需求 */}
+      <div className="putier-card">
+        <div className="flex items-center gap-2 mb-2">
+          <ClipboardList size={16} className="text-[#1B4965]" />
+          <Label className="text-sm font-bold text-[#1B4965]">其他保健需求（選填）</Label>
+        </div>
+        <p className="text-xs text-gray-400 mb-3">若上面沒有您想改善的症狀，請在此輸入您特別想改善的保健需求...</p>
+        <Textarea
+          placeholder="例如：希望改善長期偏頭痛、或是提升睡眠品質..."
+          value={customDemand}
+          onChange={e => setCustomDemand(e.target.value)}
+          className="rounded-xl resize-none text-sm bg-white"
+          rows={3}
+        />
+      </div>
 
       {/* Next Button */}
       <Button
