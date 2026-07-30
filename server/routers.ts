@@ -21,6 +21,8 @@ import {
   saveClientProgressReport,
   getClientProgressReportsByLeaderId,
   getUserByFullNameAndPhone,
+  getUserByEmail,
+  getUserByLineId,
   updateUserLineUrl,
   updateUserSubscriptionByLineUrl,
 } from "./db";
@@ -192,6 +194,21 @@ export const appRouter = router({
         const existingByUrl = await getUserByLineUrl(input.lineUrl);
         if (existingByUrl) {
           throw new Error("此 LINE 個人好友網址已被註冊");
+        }
+
+        const existingByNamePhone = await getUserByFullNameAndPhone(input.fullName, input.phone);
+        if (existingByNamePhone) {
+          throw new Error("此姓名與電話組合已被註冊，請勿重複註冊");
+        }
+
+        const existingByEmail = await getUserByEmail(input.email);
+        if (existingByEmail) {
+          throw new Error("此電子郵件已被註冊，請更換電子郵件");
+        }
+
+        const existingByLineId = await getUserByLineId(input.lineId);
+        if (existingByLineId) {
+          throw new Error("此 LINE ID 已被註冊，請更換 LINE ID");
         }
 
         await upsertUser({

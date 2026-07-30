@@ -28,6 +28,30 @@ vi.mock("./db", () => {
       }
       return undefined;
     }),
+    getUserByEmail: vi.fn(async (email: string) => {
+      for (const user of (globalThis as any).mockUsers.values()) {
+        if (user.email === email) {
+          return user;
+        }
+      }
+      return undefined;
+    }),
+    getUserByLineId: vi.fn(async (lineId: string) => {
+      for (const user of (globalThis as any).mockUsers.values()) {
+        if (user.lineId === lineId) {
+          return user;
+        }
+      }
+      return undefined;
+    }),
+    getUserByFullNameAndPhone: vi.fn(async (fullName: string, phone: string) => {
+      for (const user of (globalThis as any).mockUsers.values()) {
+        if (user.fullName === fullName && user.phone === phone) {
+          return user;
+        }
+      }
+      return undefined;
+    }),
     saveAssessment: vi.fn(async (assessment: any) => {
       const id = (globalThis as any).mockAssessments.length + 1;
       const record = { ...assessment, id, createdAt: new Date() };
@@ -226,6 +250,42 @@ describe("領導人註冊與登入模擬測試", () => {
         lineId: "leaderA2_line",
       })
     ).rejects.toThrow("此 LINE 個人好友網址已被註冊");
+
+    // 註冊重複的姓名與電話
+    await expect(
+      caller.auth.leaderRegister({
+        fullName: "領導人代號A", // 重複姓名
+        lineUrl: "https://line.me/ti/p/leaderA3",
+        phone: "0912345678", // 重複電話
+        email: "leaderA3@test.com",
+        customLeaderId: "leaderA3",
+        lineId: "leaderA3_line",
+      })
+    ).rejects.toThrow("此姓名與電話組合已被註冊，請勿重複註冊");
+
+    // 註冊重複的電子郵件
+    await expect(
+      caller.auth.leaderRegister({
+        fullName: "另一位領導人",
+        lineUrl: "https://line.me/ti/p/leaderA4",
+        phone: "0922222222",
+        email: "leaderA@test.com", // 重複 email
+        customLeaderId: "leaderA4",
+        lineId: "leaderA4_line",
+      })
+    ).rejects.toThrow("此電子郵件已被註冊，請更換電子郵件");
+
+    // 註冊重複的 LINE ID
+    await expect(
+      caller.auth.leaderRegister({
+        fullName: "另一位領導人",
+        lineUrl: "https://line.me/ti/p/leaderA5",
+        phone: "0922222222",
+        email: "leaderA5@test.com",
+        customLeaderId: "leaderA5",
+        lineId: "leaderA_line", // 重複 lineId
+      })
+    ).rejects.toThrow("此 LINE ID 已被註冊，請更換 LINE ID");
   });
 
   it("5. 模擬客戶每日修復進度回報與領導人後台查詢", async () => {

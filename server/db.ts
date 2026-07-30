@@ -133,6 +133,36 @@ export async function getUserByFullNameAndPhone(fullName: string, phone: string)
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    let found: any = undefined;
+    memUsers.forEach(u => {
+      if (u.email === email) {
+        found = u;
+      }
+    });
+    return found;
+  }
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByLineId(lineId: string) {
+  const db = await getDb();
+  if (!db) {
+    let found: any = undefined;
+    memUsers.forEach(u => {
+      if (u.lineId === lineId) {
+        found = u;
+      }
+    });
+    return found;
+  }
+  const result = await db.select().from(users).where(eq(users.lineId, lineId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function updateUserLineUrl(oldLineUrl: string, newLineUrl: string) {
   const db = await getDb();
   if (!db) {
